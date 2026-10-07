@@ -1,13 +1,85 @@
 # tweet-street
 
-An example bank made of four services. It is built on [Lark](https://github.com/matthewjones372/lark) (actors,
-clustering, event sourcing, streams), [Pelican](https://github.com/matthewjones372/pelican) (HTTP endpoints and
-pages), [Proofload](https://github.com/matthewjones372/proofload) (load tests) and
-[kimney](https://github.com/matthewjones372/kimney) (mapping between the wire and the domain).
+A small bank, built to see whether a handful of Kotlin and Scala libraries hold up when the money has to add up. It
+is four services: the bank itself on a three-node cluster, transfer screening, changes that need two people to
+agree, and fine-grained access control. The name is Wall Street for birds, since it runs on
+[Lark](https://github.com/matthewjones372/lark).
 
-This is a personal project. It exists to try those libraries on something with real moving parts: money that has to
-add up, a cluster that loses nodes, and changes that need more than one person to agree. It is not a real bank, it
-holds no real money, and the credentials in it are development values for running it on your own machine.
+It is a personal project, not a real bank. It holds no real money, and the credentials in it are development values
+for running it on your own machine.
+
+## What it does
+
+- **Every account is an actor** on a three-node [Lark](https://github.com/matthewjones372/lark) cluster. It owns its
+  balance, writes its events to a Postgres journal before it answers, and lives on whichever node holds its shard.
+- **A transfer is a saga.** It debits one account, credits the other, and refunds the first if the credit is
+  refused. If the node running it dies part way through, another node picks it up from its last event.
+- **The books are checked.** `GET /ledger` checks that the balances plus the money in flight equal everything paid in
+  minus everything paid out.
+- **It survives some chaos.** `scripts/chaos-docker.sh` cuts a node off, freezes another, stops a journal database
+  and freezes Kafka, all under 200 transfers a second. Afterwards the ledger still balances, and every failed request
+  was a 503 or a timeout that is safe to retry.
+- **Each transfer is screened** by [bank-checks](bank-checks), against rules an admin writes in a web wizard in
+  [verdict](https://github.com/matthewjones372/verdict)'s rule language.
+- **Some changes need two people.** A new screening rule, or support looking at a customer's account, goes through
+  [bank-approvals](bank-approvals), which keeps its audit trail as a hash chain. The customer can see each time
+  support looked.
+- **Access is decided in one place.** [bank-access](bank-access) holds an OpenFGA model, kept up to date from the
+  other services' events.
+- **Logs are checked for secrets.** The chaos run ends by searching every log line it caused for passwords, keys and
+  anything shaped like a token, and fails if it finds one.
+
+```mermaid
+flowchart TB
+    customer([Customers]) --> bank
+    staff([Support and ops]) --> bank
+    risk([Risk and admins]) --> checks
+    approvers([Approvers]) --> approvals
+
+    bank[lark-bank<br/>three nodes, one Lark cluster]
+    checks[bank-checks<br/>screening, monitoring, policy]
+    approvals[bank-approvals<br/>requests and votes]
+    access[bank-access<br/>OpenFGA and access-sync]
+
+    bank -->|screen each transfer| checks
+    checks -->|rule versions to approve| approvals
+    bank -->|grants applied| approvals
+    bank -.->|who may see what, in shadow| access
+
+    bank -->|account, transfer and access events| kafka
+    approvals -->|approval events| kafka
+    checks -->|flags| kafka
+    kafka[(Kafka)]
+    kafka -->|account events| checks
+    kafka -->|account and approval events| access
+    kafka -->|approval events| bank
+```
+
+## How fast
+
+Three bank nodes as containers on one 4-core, 16 GB machine, with Postgres committing durably, every event published
+to Kafka, and the load generator on the same machine, measured with
+[Proofload](https://github.com/matthewjones372/proofload):
+
+| 60 seconds of | Failed | p50 | p99 |
+|---|---|---|---|
+| transfers at 400/s | 0 | 62 ms | 700 ms |
+| transfers at 400/s, each one screened | 0 | 184 ms | 1.49 s |
+| 600 payments a second into one account | 0 | 5 ms | 39 ms |
+
+More runs, including what tracing costs, are in [lark-bank's README](lark-bank/README.md#what-it-carries).
+
+## Where to start reading
+
+| To see | Look at |
+|---|---|
+| The domain, with no framework in it | [`lark-bank/domain`](lark-bank/domain/src/main/kotlin/bank/domain): `Account.kt`, `Transfer.kt`, `Money.kt` |
+| Accounts and transfers as actors on the cluster | [`Accounts.kt`](lark-bank/app/src/main/kotlin/bank/app/Accounts.kt), [`Transfers.kt`](lark-bank/app/src/main/kotlin/bank/app/Transfers.kt), [`ShardedBank.kt`](lark-bank/app/src/main/kotlin/bank/app/ShardedBank.kt) |
+| The chaos run | [`lark-bank/scripts/chaos-docker.sh`](lark-bank/scripts/chaos-docker.sh) |
+| Screening a transfer | [`bank-checks/screening`](bank-checks/screening/src/main/scala/checks/screening) |
+| The audit trail as a hash chain | [`Chain.kt`](bank-approvals/domain/src/main/kotlin/bank/approvals/domain/Chain.kt) |
+| How the four services fit together | [`lark-bank/docs/services.md`](lark-bank/docs/services.md) |
+| Why each piece is the way it is | [`lark-bank/specs/`](lark-bank/specs), one spec per change |
 
 ## The folders
 
@@ -18,8 +90,10 @@ holds no real money, and the credentials in it are development values for runnin
 | [`bank-approvals/`](bank-approvals) | Changes that more than one person agrees to before they take effect, with an audit trail kept as a hash chain. Kotlin on Lark and Pelican. |
 | [`bank-access/`](bank-access) | Who may do what, in one place: an OpenFGA model, a service that derives relationships from events, and the client the other services ask. |
 
-Each folder has its own README. [`lark-bank/docs/services.md`](lark-bank/docs/services.md) shows how the four fit
-together, and [`lark-bank/specs/`](lark-bank/specs) records why each piece is the way it is.
+It is built on four libraries of mine: [Lark](https://github.com/matthewjones372/lark) for actors, clustering, event
+sourcing and streams, [Pelican](https://github.com/matthewjones372/pelican) for HTTP endpoints and pages,
+[Proofload](https://github.com/matthewjones372/proofload) for the load tests, and
+[kimney](https://github.com/matthewjones372/kimney) for mapping between the wire and the domain.
 
 ## Running it locally
 
