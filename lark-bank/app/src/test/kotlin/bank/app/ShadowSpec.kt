@@ -51,11 +51,33 @@ class ShadowSpec {
     private val run = UUID.randomUUID().toString().take(8)
     private val http = HttpClient.newHttpClient()
 
-    /** A counter on [base]'s /metrics, summed over the lines whose labels contain each of [labels]. */
+    /**
+     * A counter on [base]'s /metrics, summed over the lines whose labels contain each of [labels]. A count made in a
+     * sampled trace ends in an exemplar (`# {trace_id=...} 1.0 <time>`); the value is the number before it.
+     */
     private fun counted(base: String, name: String, vararg labels: String): Double =
         http.send(HttpRequest.newBuilder(URI.create("$base/metrics")).build(), HttpResponse.BodyHandlers.ofString()).body()
             .lines().filter { it.startsWith(name) && labels.all(it::contains) }
-            .sumOf { it.substringAfterLast(' ').toDouble() }
+            .sumOf { it.substringBefore(" # ").substringAfterLast(' ').toDouble() }
+
+    /** Every question the shadow has finished with: agreed, unanswered, or disagreed after asking again. */
+    private fun judged(base: String): Double =
+        counted(base, "bank_access_shadow_total") + counted(base, "bank_access_disagreed_total")
+
+    /**
+     * Makes [request], which the bank shadows with one question, again for as long as bank-access leaves it unanswered:
+     * past its 50 ms budget nothing is compared (spec 0022), so that says nothing about the relationship.
+     */
+    private fun answered(base: String, request: () -> Unit) {
+        repeat(5) {
+            val before = judged(base)
+            val unanswered = counted(base, "bank_access_shadow_total", "unanswered")
+            request()
+            eventually("the shadow finished with its question") { judged(base) > before }
+            if (counted(base, "bank_access_shadow_total", "unanswered") == unanswered) return
+        }
+        error("bank-access never answered within its budget")
+    }
 
     private fun eventually(what: String, done: () -> Boolean) {
         val until = System.nanoTime() + 30_000_000_000
@@ -77,16 +99,16 @@ class ShadowSpec {
             fga.write(listOf(Tuple("person:ada", "owner", "account:$acc"), Tuple("bank:lark", "bank", "account:$acc")))
 
             apiClient(base, JacksonCodecs).use { client ->
-                client.calling("ada").response(getAccount, acc).status shouldBe 200
-                client.calling("ada").response(statement, In3(acc, 50, null)).status shouldBe 200
-                client.calling("eve").response(getAccount, acc).status shouldBe 404
-                eventually("three questions agreed on") { counted(base, "bank_access_shadow_total", "agreed") >= 3.0 }
+                answered(base) { client.calling("ada").response(getAccount, acc).status shouldBe 200 }
+                answered(base) { client.calling("ada").response(statement, In3(acc, 50, null)).status shouldBe 200 }
+                answered(base) { client.calling("eve").response(getAccount, acc).status shouldBe 404 }
+                counted(base, "bank_access_shadow_total", "agreed") shouldBe 3.0
                 counted(base, "bank_access_disagreed_total") shouldBe 0.0
 
                 // A relationship that is wrong: Eve as acc's owner. The bank still answers from its own rules.
                 fga.write(listOf(Tuple("person:eve", "owner", "account:$acc")))
-                client.calling("eve").response(getAccount, acc).status shouldBe 404
-                eventually("the disagreement counted") { counted(base, "bank_access_disagreed_total", "view-account") == 1.0 }
+                answered(base) { client.calling("eve").response(getAccount, acc).status shouldBe 404 }
+                counted(base, "bank_access_disagreed_total", "view-account") shouldBe 1.0
             }
         }
     }
