@@ -82,14 +82,17 @@ class TraceActorsSpec {
                 trace
             }
 
+            // Each node exports its spans on its own schedule, so wait for every span the trace is checked for, not
+            // only the last ones made: the request's own spans can reach Tempo after the accounts' do.
+            val expected = listOf("PUT /transfers/{transferId}", "transfer debitsource", "account debit", "account credit")
             val until = System.nanoTime() + 60_000_000_000
-            fun complete(trace: String) = held(trace).names.containsAll(listOf("account debit", "account credit"))
+            fun complete(trace: String) = held(trace).names.containsAll(expected)
             while (!traces.all(::complete) && System.nanoTime() < until) Thread.sleep(500)
 
             val all = traces.map(::held)
             all.forEach { trace ->
                 withClue(trace.names) {
-                    trace.names shouldContainAll listOf("PUT /transfers/{transferId}", "transfer debitsource", "account debit", "account credit")
+                    trace.names shouldContainAll expected
                 }
             }
             withClue("six transfers, two accounts each, on three nodes: some leg is on another node") {
