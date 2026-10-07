@@ -1,0 +1,67 @@
+// Every event of every account, on the topic bank.account-events, keyed by account id (bank spec 0015). Only ever
+// added to: see money.proto.
+syntax = "proto3";
+
+package bank.events.v1;
+
+import "bank/events/v1/money.proto";
+
+option java_multiple_files = true;
+option java_package = "bank.events.v1";
+
+// One account event. First in this file, as the topic's message: its records name it by index 0.
+message AccountEvent {
+  string account_id = 1;
+  // The event's place in its account, from 1; (account_id, sequence) is unique, and what a consumer dedupes on.
+  int64 sequence = 2;
+  int64 at_millis = 3;
+  // A case this consumer does not know (one added after it was built) arrives unset: skip the event, never fail.
+  oneof event {
+    Opened opened = 10;
+    Deposited deposited = 11;
+    Withdrawn withdrawn = 12;
+    Debited debited = 13;
+    Credited credited = 14;
+    Refunded refunded = 15;
+    LegsClosed legs_closed = 16;
+  }
+}
+
+message Opened {
+  string owner = 1;
+  Money initial = 2;
+  string reference = 3;
+}
+
+message Deposited {
+  Money amount = 1;
+  string reference = 2;
+}
+
+message Withdrawn {
+  Money amount = 1;
+  string reference = 2;
+}
+
+// A transfer's first leg: the money left this account.
+message Debited {
+  string transfer_id = 1;
+  Money amount = 2;
+}
+
+// A transfer's second leg: the money arrived in this account.
+message Credited {
+  string transfer_id = 1;
+  Money amount = 2;
+}
+
+// A transfer's debit given back, the destination having refused it.
+message Refunded {
+  string transfer_id = 1;
+  Money amount = 2;
+}
+
+// A settled transfer's legs, forgotten by the account. Moves no money.
+message LegsClosed {
+  string transfer_id = 1;
+}

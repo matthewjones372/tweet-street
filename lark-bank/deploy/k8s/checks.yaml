@@ -1,0 +1,84 @@
+# The checks outside the bank (bank spec 0018), from bank-checks/ in tweet-street: screening, which each transfer asks
+# before its source is debited, monitoring, which reads every account event and flags on checks.flags, and the wizard
+# admins write the rules in. Its rules, decisions and recent records are in a database of its own on bank-db-0.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata: { name: checks }
+spec:
+  cluster: { name: bank-db-0 }
+  name: checks
+  owner: bank
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checks
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: checks } }
+  template:
+    metadata:
+      labels: { app: checks }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "8090", prometheus.io/path: /metrics }
+    spec:
+      # Each context's Flyway migrations, applied before the app starts (spec 0017): one that fails stops the rollout
+      # here, with the old pod still serving. The app refuses to start while any is pending.
+      initContainers:
+        - name: migrate
+          image: bank-checks:dev
+          imagePullPolicy: Never
+          command: [ /opt/checks/bin/migrate ]
+          env:
+            - { name: DATABASE_URL, value: "jdbc:postgresql://bank-db-0-rw:5432/checks" }
+            - { name: DATABASE_USER, valueFrom: { secretKeyRef: { name: bank-db-credentials, key: username } } }
+            - { name: DATABASE_PASSWORD, valueFrom: { secretKeyRef: { name: bank-db-credentials, key: password } } }
+            - { name: DATABASE_POOL_SIZE, value: "2" }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 384Mi }
+      containers:
+        - name: checks
+          image: bank-checks:dev
+          imagePullPolicy: Never
+          env:
+            - { name: DATABASE_URL, value: "jdbc:postgresql://bank-db-0-rw:5432/checks" }
+            - { name: DATABASE_USER, valueFrom: { secretKeyRef: { name: bank-db-credentials, key: username } } }
+            - { name: DATABASE_PASSWORD, valueFrom: { secretKeyRef: { name: bank-db-credentials, key: password } } }
+            - { name: KAFKA_ENABLED, value: "true" }
+            - { name: KAFKA_BOOTSTRAP, value: "kafka:9092" }
+            - { name: KAFKA_USERNAME, value: checks }
+            - { name: KAFKA_PASSWORD, valueFrom: { secretKeyRef: { name: kafka-users, key: checks } } }
+            - { name: APICURIO_URL, value: "http://apicurio:8080/apis/registry/v3" }
+            # Admins sign in through the identity provider (bank spec 0019): the test issuer on kind, Pocket ID at home.
+            - { name: IDENTITY_ISSUER, value: "http://issuer:9000" }
+            - { name: IDENTITY_CALLBACK_URL, value: "http://localhost:8090/callback" }
+            # A version that would change what is in force waits for Approvals (bank spec 0019). On kind the check's
+            # token is the test issuer's; at home, client credentials from Pocket ID (the overlay says so).
+            - { name: APPROVALS_ENABLED, value: "true" }
+            - { name: APPROVALS_URL, value: "http://bank-approvals:8070" }
+            - { name: APPROVALS_PAGES, value: "http://localhost:8070" }
+            - { name: APPROVALS_TOKEN_URL, value: "http://issuer:9000/token" }
+            - { name: APPROVALS_TOKEN_FORM, value: "grant_type=urn:lark-bank:test-token&subject=checks&groups=services&audience=bank-approvals" }
+            - { name: PUBLIC_URL, value: "http://localhost:8090" }
+            # Spans to Tempo (bank spec 0024), one request in ten: what trace-cost measured as within the noise.
+            - { name: TELEMETRY_ENABLED, value: "true" }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://tempo:4318" }
+            - { name: TELEMETRY_SAMPLED, value: "0.1" }
+          ports: [ { containerPort: 8090, name: http } ]
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+          # 414 MiB with no limit, its heap free to grow; half the limit is heap.
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { memory: 640Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checks
+spec:
+  # From the host through kind's port mapping, where the wizard's sign-in comes back to localhost:8090.
+  type: NodePort
+  selector: { app: checks }
+  ports: [ { port: 8090, targetPort: http, nodePort: 30890 } ]

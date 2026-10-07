@@ -1,0 +1,352 @@
+# The bank as three processes on one Docker network, for a run with no Kubernetes: the same image, static seeds
+# instead of the pods API. bank-1 is the lowest seed, so it forms the cluster and migrates the schema; the others
+# start once it is ready and join it.
+#   docker compose -f deploy/docker/compose.yml up -d --build
+#   docker compose -f deploy/docker/compose.yml run --rm -e SCENARIO=transfers load
+name: lark-bank
+
+x-bank: &bank
+  image: lark-bank:dev
+  restart: unless-stopped
+  stop_grace_period: 45s
+  deploy: { resources: { limits: { memory: 1536m } } }
+  healthcheck:
+    test: [ "CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q ' 200 '" ]
+    interval: 2s
+    timeout: 2s
+    retries: 90
+
+x-bank-env: &bank-env
+  HOST: 0.0.0.0
+  DATABASE_URL: jdbc:postgresql://postgres:5432/bank
+  DATABASE_POOL_SIZE: "32"
+  # The journal split by id across two databases (lark spec 0088): postgres is db-0, and keeps the read models.
+  JOURNAL_DATABASES: db-1=jdbc:postgresql://postgres-2:5432/bank
+  JOURNAL_GROUP_COMMIT: ${JOURNAL_GROUP_COMMIT:-true}
+  # Every event published (bank spec 0015): Kafka for the records, Apicurio for their schemas.
+  KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
+  KAFKA_BOOTSTRAP: kafka:9092
+  # The bank's user on the brokers (bank spec 0021), as the broker's setup makes it.
+  KAFKA_USERNAME: bank
+  KAFKA_PASSWORD: bank-kafka
+  APICURIO_URL: http://apicurio:8080/apis/registry/v3
+  # Each transfer screened before it debits (bank spec 0018), by the stand-in check below. Off unless asked for.
+  SCREENING_ENABLED: ${SCREENING_ENABLED:-false}
+  # The stand-in below unless SCREENING_URL names the real check: scripts/checks-docker.sh runs bank-checks here.
+  SCREENING_URL: ${SCREENING_URL:-http://check:8090}
+  # Who is calling (bank spec 0021): the test issuer below, never trusted at home. The browser reaches the bank and the
+  # issuer on localhost; the bank reaches the issuer by name. The session key is a development one, shared by the nodes.
+  IDENTITY_ISSUER: http://issuer:9000
+  IDENTITY_CALLBACK_URL: http://localhost:8080/callback
+  IDENTITY_SESSION_KEY: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
+  # Support's grants, approved in Approvals (bank spec 0021), with the approvals profile up. The bank tells Approvals it
+  # applied each with a token from the test issuer, as a service.
+  ACCESS_ENABLED: ${ACCESS_ENABLED:-false}
+  APPROVALS_URL: http://approvals:8070
+  APPROVALS_TOKEN_URL: http://issuer:9000/token
+  APPROVALS_TOKEN_FORM: "grant_type=urn:lark-bank:test-token&subject=bank&groups=services&audience=bank-approvals"
+  # bank-access asked beside the bank's own rules (bank spec 0022), with the access profile up.
+  ACCESS_SHADOW_ENABLED: ${ACCESS_SHADOW_ENABLED:-false}
+  FGA_API_URL: http://access:8080
+  FGA_API_TOKEN: bank-key-dev
+  # Spans to Tempo, with the traces profile up (bank spec 0024); without it they are made and dropped.
+  TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-false}
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318
+  TELEMETRY_SAMPLED: ${TELEMETRY_SAMPLED:-0.1}
+  # Half the container for the heap: the rest is metaspace, threads and buffers. At 75% the kernel killed a node under
+  # chaos for using more than its limit (generational ZGC, JDK 21, also holds far less than the default ZGC).
+  JAVA_OPTS: >-
+    -XX:+UseZGC -XX:+ZGenerational -XX:MaxRAMPercentage=50 -XX:+ExitOnOutOfMemoryError
+    -Dbank.cluster.static.seeds.0=bank-1:25520 -Dbank.cluster.static.seeds.1=bank-2:25520
+    -Dbank.cluster.static.seeds.2=bank-3:25520 -Dbank.cluster.downing.stableAfter=10s
+    -Dbank.cluster.gossip.probeEvery=3s -Dbank.cluster.gossip.ackWithin=2s
+    ${BANK_OPTS:-}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    command: [ postgres, -c, max_connections=300, -c, shared_buffers=256MB ]
+    environment: { POSTGRES_DB: bank, POSTGRES_USER: bank, POSTGRES_PASSWORD: bank }
+    healthcheck: { test: [ "CMD", "pg_isready", "-U", "bank" ], interval: 2s, retries: 30 }
+
+  # The second journal database: lark's tables only, which the bank migrates at start.
+  postgres-2:
+    image: postgres:17-alpine
+    command: [ postgres, -c, max_connections=300, -c, shared_buffers=256MB ]
+    environment: { POSTGRES_DB: bank, POSTGRES_USER: bank, POSTGRES_PASSWORD: bank }
+    healthcheck: { test: [ "CMD", "pg_isready", "-U", "bank" ], interval: 2s, retries: 30 }
+
+  # Every client signs in as its service, and may do only what deploy/k8s/kafka/setup.sh allows it (bank spec 0021): the
+  # same broker and setup Kubernetes runs. The setup runs in the broker's container, where the one listener nobody
+  # signs in to is, and the broker is healthy once it has.
+  kafka:
+    image: apache/kafka:3.9.1
+    entrypoint: [ bash, -c, "(/kafka/setup.sh > /tmp/setup.log 2>&1 && touch /tmp/ready) & exec /etc/kafka/docker/run" ]
+    volumes: [ "../k8s/kafka/setup.sh:/kafka/setup.sh:ro" ]
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: CLIENT://:9092,CONTROLLER://127.0.0.1:9093,LOCAL://127.0.0.1:9094
+      KAFKA_ADVERTISED_LISTENERS: CLIENT://kafka:9092,LOCAL://127.0.0.1:9094
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,LOCAL:PLAINTEXT,CLIENT:SASL_PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LOCAL
+      KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+      KAFKA_LISTENER_NAME_CLIENT_SCRAM___SHA___512_SASL_JAAS_CONFIG: "org.apache.kafka.common.security.scram.ScramLoginModule required;"
+      KAFKA_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
+      # Only the controller's and the setup's listeners, both on 127.0.0.1, ever see someone who has not signed in.
+      KAFKA_SUPER_USERS: "User:ANONYMOUS"
+      KAFKA_PASSWORD_BANK: bank-kafka
+      KAFKA_PASSWORD_CHECKS: checks-kafka
+      KAFKA_PASSWORD_APPROVALS: approvals-kafka
+      KAFKA_PASSWORD_ACCESS_SYNC: access-sync-kafka
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@127.0.0.1:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_HEAP_OPTS: -Xmx512m -Xms512m
+    # Healthy once its users and ACLs are in place: the setup marks it, so the check costs nothing.
+    healthcheck:
+      test: [ "CMD-SHELL", "test -f /tmp/ready" ]
+      interval: 3s
+      retries: 60
+
+  # The events' schemas (bank spec 0015), kept in a Postgres of their own.
+  apicurio-db:
+    image: postgres:17-alpine
+    environment: { POSTGRES_DB: apicurio, POSTGRES_USER: apicurio, POSTGRES_PASSWORD: apicurio }
+    healthcheck: { test: [ "CMD", "pg_isready", "-U", "apicurio" ], interval: 2s, retries: 30 }
+
+  apicurio:
+    image: quay.io/apicurio/apicurio-registry:3.3.3
+    environment:
+      APICURIO_STORAGE_KIND: sql
+      APICURIO_STORAGE_SQL_KIND: postgresql
+      APICURIO_DATASOURCE_URL: jdbc:postgresql://apicurio-db:5432/apicurio
+      APICURIO_DATASOURCE_USERNAME: apicurio
+      APICURIO_DATASOURCE_PASSWORD: apicurio
+    deploy: { resources: { limits: { memory: 512m } } }
+    depends_on: { apicurio-db: { condition: service_healthy } }
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8080/apis/registry/v3/system/info >/dev/null" ]
+      interval: 3s
+      retries: 40
+
+  # A test identity provider (bank spec 0021), from the load's image: anyone may sign in as anyone, which is why home
+  # never runs it. Tokens name http://issuer:9000; a browser is sent to localhost:9000 to sign in.
+  issuer:
+    image: lark-bank-loadtest:dev
+    entrypoint: [ "java", "-XX:MaxRAMPercentage=50", "-cp", "/opt/loadtest/lib/*", "bank.issuer.TestIssuerKt" ]
+    environment: { ISSUER_URL: "http://issuer:9000", ISSUER_BROWSER_URL: "http://localhost:9000" }
+    ports: [ "9000:9000" ]
+    restart: unless-stopped
+    deploy: { resources: { limits: { memory: 256m } } }
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000" ]
+      interval: 2s
+      retries: 30
+
+  # A stand-in for the screening check (bank spec 0018), from the load's image, until the real one runs here.
+  check:
+    image: lark-bank-loadtest:dev
+    entrypoint: [ "java", "-XX:+UseZGC", "-XX:+ZGenerational", "-XX:MaxRAMPercentage=50", "-XX:+ExitOnOutOfMemoryError", "-cp", "/opt/loadtest/lib/*", "bank.load.StandInCheckKt" ]
+    # The load moves up to £2.00 at a time, so about a quarter of its pound transfers are declined.
+    environment: { DECLINE_FROM: "1.50" }
+    # At 384 MiB and three quarters of it heap, the kernel killed it under 200 transfers a second.
+    restart: unless-stopped
+    deploy: { resources: { limits: { memory: 768m } } }
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8090" ]
+      interval: 2s
+      retries: 30
+
+  # The real checks (bank-checks/), with the profile `checks`: its image is built from that folder.
+  checks-db:
+    image: postgres:17-alpine
+    profiles: [ checks ]
+    environment: { POSTGRES_DB: checks, POSTGRES_USER: checks, POSTGRES_PASSWORD: checks }
+    healthcheck: { test: [ "CMD", "pg_isready", "-U", "checks" ], interval: 2s, retries: 30 }
+
+  # Each context's Flyway migrations, once, before the check starts (spec 0017).
+  checks-migrate:
+    image: bank-checks:dev
+    profiles: [ checks ]
+    entrypoint: [ /opt/checks/bin/migrate ]
+    environment: { DATABASE_URL: "jdbc:postgresql://checks-db:5432/checks", DATABASE_POOL_SIZE: "2" }
+    depends_on: { checks-db: { condition: service_healthy } }
+
+  checks:
+    image: bank-checks:dev
+    profiles: [ checks ]
+    ports: [ "8090:8090" ]
+    environment:
+      DATABASE_URL: jdbc:postgresql://checks-db:5432/checks
+      KAFKA_ENABLED: "true"
+      KAFKA_BOOTSTRAP: kafka:9092
+      KAFKA_USERNAME: checks
+      KAFKA_PASSWORD: checks-kafka
+      APICURIO_URL: http://apicurio:8080/apis/registry/v3
+      # Admins sign in through the test issuer, as the bank's pages do (spec 0019); risk and admins may.
+      IDENTITY_ISSUER: http://issuer:9000
+      IDENTITY_CALLBACK_URL: http://localhost:8090/callback
+      PUBLIC_URL: http://localhost:8090
+      # A version that would change what is in force waits for Approvals (spec 0019), with the approvals profile up.
+      APPROVALS_ENABLED: ${APPROVALS_ENABLED:-false}
+      APPROVALS_URL: http://approvals:8070
+      APPROVALS_PAGES: http://localhost:8070
+      APPROVALS_TOKEN_URL: http://issuer:9000/token
+      APPROVALS_TOKEN_FORM: "grant_type=urn:lark-bank:test-token&subject=checks&groups=services&audience=bank-approvals"
+    deploy: { resources: { limits: { memory: 640m } } }
+    depends_on:
+      checks-migrate: { condition: service_completed_successfully }
+      kafka: { condition: service_healthy }
+      apicurio: { condition: service_healthy }
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8090" ]
+      interval: 2s
+      retries: 60
+
+  # Approvals (spec 0019), from ../bank-approvals: requests for the check's rule versions, answered on Kafka.
+  approvals-db:
+    image: postgres:17-alpine
+    profiles: [ approvals ]
+    environment: { POSTGRES_DB: approvals, POSTGRES_USER: approvals, POSTGRES_PASSWORD: approvals }
+    healthcheck: { test: [ "CMD", "pg_isready", "-U", "approvals" ], interval: 2s, retries: 30 }
+
+  approvals:
+    image: bank-approvals:dev
+    profiles: [ approvals ]
+    ports: [ "8070:8070" ]
+    environment:
+      HOST: 0.0.0.0
+      DATABASE_URL: jdbc:postgresql://approvals-db:5432/approvals
+      KAFKA_BOOTSTRAP: kafka:9092
+      KAFKA_USERNAME: approvals
+      KAFKA_PASSWORD: approvals-kafka
+      APICURIO_URL: http://apicurio:8080/apis/registry/v3
+      IDENTITY_ISSUER: http://issuer:9000
+      IDENTITY_CALLBACK_URL: http://localhost:8070/callback
+      IDENTITY_SESSION_KEY: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
+    deploy: { resources: { limits: { memory: 768m } } }
+    depends_on:
+      approvals-db: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      apicurio: { condition: service_healthy }
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8070" ]
+      interval: 2s
+      retries: 90
+
+  # Tempo (spec 0024), with the profile `traces` and TELEMETRY_ENABLED=true: every span the services export, on 3200.
+  tempo:
+    image: grafana/tempo:3.1.0
+    profiles: [ traces ]
+    command: [ -config.file=/etc/tempo.yaml, -target=all, -backend-worker.compaction.block-retention=24h, -backend-scheduler.provider.work.compaction.block-retention=24h ]
+    volumes: [ ./tempo.yaml:/etc/tempo.yaml:ro ]
+    ports: [ "3200:3200" ]
+    deploy: { resources: { limits: { memory: 512m } } }
+
+  # Loki and Fluent Bit (spec 0023), with the profile `logs`: every container's lines, kept a day and queried on 3100
+  # after a run, rather than copied out. Fluent Bit reads Docker's own log files, so this is Docker on Linux (or
+  # inside Docker Desktop's machine, where they live).
+  loki:
+    image: grafana/loki:3.5.0
+    profiles: [ logs ]
+    command: [ -config.file=/etc/loki.yaml, -target=all ]
+    volumes: [ ./loki.yaml:/etc/loki.yaml:ro, loki:/loki ]
+    ports: [ "3100:3100" ]
+    deploy: { resources: { limits: { memory: 512m } } }
+
+  fluent-bit:
+    image: fluent/fluent-bit:4.0.3
+    profiles: [ logs ]
+    command: [ -c, /etc/fluent-bit.yaml ]
+    volumes:
+      - ./fluent-bit.yaml:/etc/fluent-bit.yaml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - fluent-bit:/var/lib/fluent-bit
+    depends_on: [ loki ]
+    deploy: { resources: { limits: { memory: 64m } } }
+
+  # bank-access (spec 0022), from ../bank-access, with the profile `access`: OpenFGA in memory, as compose is thrown away;
+  # its model applied by the image the cluster's Job runs; and access-sync, filling it from the bank's and Approvals'
+  # events. No Pocket ID runs here, so no groups: staff questions disagree here, and only here.
+  access:
+    image: openfga/openfga:v1.21.0
+    profiles: [ access ]
+    command: [ run ]
+    environment:
+      OPENFGA_AUTHN_METHOD: preshared
+      OPENFGA_AUTHN_PRESHARED_KEYS: model-key-dev,bank-key-dev,sync-key-dev
+      OPENFGA_CHECK_QUERY_CACHE_ENABLED: "true"
+      OPENFGA_CHECK_QUERY_CACHE_TTL: 10s
+      OPENFGA_PLAYGROUND_ENABLED: "false"
+      # Its spans to Tempo, at the bank's own ratio (see deploy/k8s/access.yaml), with the traces profile up.
+      OPENFGA_TRACE_ENABLED: ${TELEMETRY_ENABLED:-false}
+      OPENFGA_TRACE_OTLP_ENDPOINT: tempo:4317
+      OPENFGA_TRACE_SAMPLE_RATIO: ${TELEMETRY_SAMPLED:-0.1}
+    deploy: { resources: { limits: { memory: 256m } } }
+
+  access-model:
+    image: bank-access-model:dev
+    profiles: [ access ]
+    environment: { FGA_API_URL: "http://access:8080", FGA_API_TOKEN: model-key-dev }
+    depends_on: [ access ]
+
+  access-sync:
+    image: bank-access-sync:dev
+    profiles: [ access ]
+    restart: unless-stopped
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      KAFKA_USERNAME: access-sync
+      KAFKA_PASSWORD: access-sync-kafka
+      FGA_API_URL: http://access:8080
+      FGA_API_TOKEN: sync-key-dev
+      # Each traced account event handled in its trace (spec 0024), exported as the bank's spans are.
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4318
+      TRACES_SAMPLED: ${TELEMETRY_SAMPLED:-0.1}
+    deploy: { resources: { limits: { memory: 384m } } }
+    depends_on:
+      access-model: { condition: service_completed_successfully }
+      kafka: { condition: service_healthy }
+
+  bank-1:
+    <<: *bank
+    hostname: bank-1
+    environment: { <<: *bank-env, POD_NAME: bank-1, POD_IP: bank-1 }
+    ports: [ "8080:8080" ]
+    depends_on:
+      postgres: { condition: service_healthy }
+      postgres-2: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      apicurio: { condition: service_healthy }
+      check: { condition: service_healthy }
+      issuer: { condition: service_healthy }
+
+  bank-2:
+    <<: *bank
+    hostname: bank-2
+    environment: { <<: *bank-env, POD_NAME: bank-2, POD_IP: bank-2 }
+    depends_on: { bank-1: { condition: service_healthy } }
+
+  bank-3:
+    <<: *bank
+    hostname: bank-3
+    environment: { <<: *bank-env, POD_NAME: bank-3, POD_IP: bank-3 }
+    depends_on: { bank-2: { condition: service_healthy } }
+
+  # Spreads its calls over the three nodes by name, as the Service does on Kubernetes.
+  load:
+    image: lark-bank-loadtest:dev
+    profiles: [ load ]
+    environment:
+      BASE_URL: http://bank-1:8080
+      ISSUER_URL: http://issuer:9000
+      REPORT_DIR: /reports
+    volumes: [ "../../build/reports:/reports" ]
+
+volumes:
+  loki: {}
+  fluent-bit: {}

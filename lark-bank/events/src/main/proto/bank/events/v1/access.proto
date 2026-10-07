@@ -1,0 +1,37 @@
+// Every look by staff, and every request refused, on the topic bank.access-events, keyed by the account looked at, or
+// by the caller's subject when there is none (bank spec 0021). Only ever added to: see money.proto.
+syntax = "proto3";
+
+package bank.events.v1;
+
+option java_multiple_files = true;
+option java_package = "bank.events.v1";
+
+// One request someone in a staff group made, or someone acting as a customer, or anyone was refused. First in this
+// file, as the topic's message: its records name it by index 0.
+message AccessEvent {
+  // The bank's own number for it, unique: what a consumer dedupes on.
+  int64 id = 1;
+  int64 at_millis = 2;
+  // Who was there: the person signed in, as the identity provider named them, and their groups.
+  Person who = 3;
+  // Whose data it was about, when someone was acting as a customer; unset otherwise.
+  optional string acting_as = 4;
+  // The endpoint, as its method and template: "GET /accounts/{accountId}/statement".
+  string endpoint = 5;
+  // The account it was about, when it named one.
+  optional string account_id = 6;
+  // The status the bank answered.
+  int32 status = 7;
+  // The address the ingress forwarded, and the user agent, as the request carried them.
+  optional string address = 8;
+  optional string user_agent = 9;
+  // The request in bank-approvals whose grant allowed it, when one did.
+  optional string grant_approval_id = 10;
+
+  message Person {
+    string subject = 1;
+    string name = 2;
+    repeated string groups = 3;
+  }
+}

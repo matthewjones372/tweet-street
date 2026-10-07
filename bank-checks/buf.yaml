@@ -1,0 +1,7 @@
+# The flags' schema (checks.flags), held to what was published: WIRE_JSON, as lark-bank-events is.
+version: v2
+modules:
+  - path: monitoring/src/main/resources
+breaking:
+  use:
+    - WIRE_JSON

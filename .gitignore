@@ -1,0 +1,17 @@
+# Build output of every service.
+build/
+.gradle/
+.kotlin/
+target/
+project/target/
+project/project/
+.bsp/
+result
+result-*
+# Lark, Pelican and verdict checked out beside the services for a build from source (see README.md).
+/deps/
+# Editors.
+.idea/
+.vscode/
+*.iml
+.DS_Store

@@ -1,0 +1,43 @@
+:root {
+  --ink: #1d2433;
+  --muted: #5b6475;
+  --line: #d9dde5;
+  --paper: #ffffff;
+  --wash: #f4f6f9;
+  --accent: #2f5bd3;
+  --held: #b3261e;
+  --clear: #1f7a4d;
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --ink: #e6e8ee; --muted: #a0a7b5; --line: #353c4a; --paper: #171a21; --wash: #1f232c; --accent: #8aa8ff; --held: #ff8a80; --clear: #7fd6a4; }
+}
+body { margin: 0; background: var(--wash); }
+header { display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; background: var(--paper); border-bottom: 1px solid var(--line); }
+header h1 { font-size: 18px; margin: 0; }
+header a { color: inherit; text-decoration: none; }
+main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+section, form.card { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
+h2 { font-size: 16px; margin: 0 0 12px; }
+label { display: block; margin: 8px 0 4px; color: var(--muted); font-size: 13px; }
+input, select, button { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); }
+button { cursor: pointer; }
+a.button { padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); text-decoration: none; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.steps { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.steps span { padding: 4px 10px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+.steps span.now { border-color: var(--accent); color: var(--accent); }
+.group { border-left: 3px solid var(--accent); padding: 8px 0 8px 12px; margin: 8px 0; }
+.group.negated { border-left-color: var(--held); }
+.row { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+.actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.words { font-size: 16px; }
+.errors { color: var(--held); }
+.held { color: var(--held); font-weight: 600; }
+.clear { color: var(--clear); font-weight: 600; }
+pre { background: var(--wash); padding: 10px; border-radius: 6px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 13px; }
+.muted { color: var(--muted); }

@@ -1,0 +1,41 @@
+# Who may do what across the estate (lark-bank spec 0022): the one answer every service asks. Relationships are written
+# by access-sync from events, approvals and Pocket ID, never by hand; a grant's expiry is its condition.
+model
+  schema 1.1
+
+# Someone Pocket ID signs in. Acting as them is a grant of its own, approved in bank-approvals, and lasts until it ends.
+type person
+  relations
+    define impersonator: [person with not_expired]
+
+# A Pocket ID group: risk, support, ops, auditor, admins.
+type group
+  relations
+    define member: [person]
+
+# The bank as a whole: who runs it, and who audits it.
+type bank
+  relations
+    define ops: [group#member]
+    define auditor: [group#member]
+
+# An account: its owner sees and pays; someone in support with a live grant, and an auditor, see and never pay.
+type account
+  relations
+    define bank: [bank]
+    define owner: [person]
+    define supporter: [person with not_expired]
+    define payer: owner
+    define viewer: owner or supporter or auditor from bank
+
+# One of bank-checks' rules: written by its authors' group, approved by its approvers', seen by both, ops and audit.
+type rule
+  relations
+    define bank: [bank]
+    define author: [group#member]
+    define approver: [group#member]
+    define viewer: author or approver or auditor from bank or ops from bank
+
+condition not_expired(current_time: timestamp, expires: timestamp) {
+  current_time < expires
+}

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Account · Lark Bank</title>
+  <link rel="stylesheet" href="bank.css">
+</head>
+<body>
+<header>
+  <strong>Lark Bank</strong>
+  <nav>
+    <a href="./" aria-current="page">Accounts</a>
+    <a href="transfer.html">Transfer</a>
+    <a href="payroll.html">Payroll</a>
+    <a href="ops.html">Ops</a>
+    <a href="/api-docs">API</a>
+  </nav>
+</header>
+<main>
+  <section>
+    <h1 id="title">Account</h1>
+    <p class="muted" id="owner"></p>
+    <p class="balance" id="balance">—</p>
+    <p id="missing" class="message" hidden></p>
+  </section>
+
+  <section id="movements">
+    <h2>Deposit or withdraw</h2>
+    <form id="deposit" data-kind="deposit">
+      <label>Deposit <input name="amount" inputmode="decimal" placeholder="10.00" required></label>
+      <button>Deposit</button>
+      <button type="button" class="quiet retry" hidden>Try again</button>
+    </form>
+    <p id="deposit-result" class="message" hidden></p>
+    <form id="withdraw" data-kind="withdraw">
+      <label>Withdraw <input name="amount" inputmode="decimal" placeholder="10.00" required></label>
+      <button>Withdraw</button>
+      <button type="button" class="quiet retry" hidden>Try again</button>
+    </form>
+    <p id="withdraw-result" class="message" hidden></p>
+    <p class="muted">Each movement carries its own reference. <strong>Try again</strong> sends the same one, so an
+      answer lost on the way back never moves the money twice.</p>
+  </section>
+
+  <section>
+    <h2>Statement</h2>
+    <table id="statement">
+      <thead><tr><th>#</th><th>What</th><th class="amount">Amount</th><th class="amount">Balance after</th><th>Reference</th><th>When</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="muted" id="statement-empty" hidden>No movements yet. The statement follows the journal, so a movement
+      appears a moment after it is made.</p>
+    <button type="button" class="quiet" id="older" hidden>Older</button>
+  </section>
+
+  <section>
+    <h2>Who has looked</h2>
+    <ul id="looks"></ul>
+    <p class="muted" id="looks-empty" hidden>Nobody at the bank has looked at this account.</p>
+  </section>
+</main>
+<script type="module">
+  import * as bank from "./bank.js";
+  const { $, money, decimal, refusal, retryable, show } = bank;
+  await bank.currencies();
+
+  const id = new URLSearchParams(location.search).get("id") ?? "";
+  $("#title").textContent = `Account ${id}`;
+  document.title = `${id} · Lark Bank`;
+
+  let currency; // the account's, which every amount typed here is in
+  function showBalance(view) {
+    currency = view.balance.currency;
+    $("#owner").textContent = `Owner: ${view.owner} · ${currency}`;
+    $("#balance").textContent = money(view.balance, { trim: true });
+  }
+
+  async function load() {
+    const result = await bank.account(id);
+    if (result.ok) {
+      showBalance(result.body);
+      return true;
+    }
+    show($("#missing"), refusal(result), "bad");
+    $("#movements").hidden = true;
+    return false;
+  }
+
+  // ---- the statement, 50 lines a page, newest first ----
+
+  let oldest;
+  async function statement(more) {
+    const result = await bank.statement(id, more ? oldest : undefined);
+    if (!result.ok || (!more && paged)) return;
+    const body = $("#statement tbody");
+    if (!more) body.replaceChildren();
+    for (const line of result.body) {
+      const row = body.insertRow();
+      row.dataset.sequence = line.sequence;
+      for (const [text, amount] of [
+        [line.sequence], [line.kind], [money(line.amount), true], [money(line.balance), true],
+        [line.reference], [new Date(line.atMillis).toLocaleString()],
+      ]) {
+        const cell = row.insertCell();
+        cell.textContent = text;
+        if (amount) cell.className = "amount";
+      }
+      oldest = line.sequence;
+    }
+    $("#statement-empty").hidden = body.rows.length > 0;
+    $("#older").hidden = result.body.length < 50;
+  }
+  // The statement is a read model that follows the journal, so it can trail the balance by a moment, and a
+  // transfer moves money without this page. The newest page is read again while the page is in view, until older
+  // lines are loaded below it.
+  let paged = false;
+  $("#older").addEventListener("click", () => { paged = true; statement(true); });
+  setInterval(() => { if (!paged && document.visibilityState === "visible") statement(false); }, 2000);
+
+  // ---- deposit and withdraw, each with a reference kept until the bank has answered ----
+
+  for (const form of [$("#deposit"), $("#withdraw")]) {
+    const kind = form.dataset.kind;
+    const result = $(`#${kind}-result`);
+    const retry = form.querySelector(".retry");
+    let pending = null; // { amount, reference } while the bank's answer is unknown
+
+    async function send(movement) {
+      pending = movement;
+      retry.hidden = true;
+      show(result, "Sending…", "wait");
+      const answer = await bank[kind](id, movement.amount, movement.reference);
+      if (answer.ok) {
+        pending = null;
+        showBalance(answer.body);
+        show(result, `${kind === "deposit" ? "Deposited" : "Withdrew"} ${money(movement.amount, { trim: true })} (reference ${movement.reference})`, "good");
+        form.reset();
+        setTimeout(() => statement(false), 400);
+      } else if (retryable(answer)) {
+        show(result, `${refusal(answer)}. Try again sends reference ${movement.reference} again, so the money moves at most once.`, "wait");
+        retry.hidden = false;
+      } else {
+        pending = null; // a refusal moved nothing, so the next attempt is a new movement
+        show(result, refusal(answer), "bad");
+      }
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const value = decimal(new FormData(form).get("amount"));
+      if (value === null) return show(result, "An amount is a number like 10.00", "bad");
+      send({ amount: { value, currency }, reference: bank.reference(kind) });
+    });
+    retry.addEventListener("click", () => pending && send(pending));
+  }
+
+  // ---- who at the bank has looked, newest first (bank spec 0021) ----
+
+  async function looks() {
+    const result = await bank.looks(id);
+    if (!result.ok) return;
+    const list = $("#looks");
+    list.replaceChildren();
+    for (const look of result.body) {
+      const item = document.createElement("li");
+      const when = new Date(look.atMillis).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+      // The auditor sees who, and anything refused; a customer sees the role.
+      const who = look.who ? ` (${look.who}${look.actingAs ? ` as ${look.actingAs}` : ""})` : "";
+      const refused = look.status >= 400 ? `, refused ${look.status}` : "";
+      item.textContent = `${look.role}${who}, ${when}, ${look.what}${refused}`;
+      list.append(item);
+    }
+    $("#looks-empty").hidden = result.body.length > 0;
+  }
+
+  if (await load()) {
+    await statement(false);
+    await looks();
+  }
+</script>
+</body>
+</html>

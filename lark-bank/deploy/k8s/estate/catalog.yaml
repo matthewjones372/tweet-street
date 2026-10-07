@@ -1,0 +1,138 @@
+# The bank's estate on one page (bank spec 0026), in Estate's catalog format. A kind cluster's Estate shows
+# `kind`, chosen in its estate.yaml; Estate reloads this as it changes.
+environments:
+  - name: kind
+    title: kind, on a laptop
+    sources: kind
+    values: { grafana: http://localhost:3000 }
+
+teams:
+  - name: bank
+    title: The bank
+    links:
+      repository: https://github.com/matthewjones372/tweet-street
+      runbook: https://github.com/matthewjones372/tweet-street/blob/main/lark-bank/docs/runbook.md
+
+services:
+  - name: lark-bank
+    category: Bank
+    description: Accounts and transfers, on three nodes of one Lark cluster
+    owner: bank
+    repository: github:matthewjones372/tweet-street
+    build: { github: { workflow: build.yml } }
+    runbook: https://github.com/matthewjones372/tweet-street/blob/main/lark-bank/docs/runbook.md#the-bank-answers-503
+    environments: [ kind ]
+    kubernetes: { namespace: lark-bank, workloads: [ { kind: StatefulSet, name: lark-bank } ] }
+    deploy: { flux: { kustomization: apps, imagePolicy: lark-bank } }
+    load:
+      requests: sum(rate(http_server_requests_total{app="lark-bank"}[1m]))
+      errors: sum(rate(http_server_requests_total{app="lark-bank",status=~"5.."}[1m]))
+      p99: histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{app="lark-bank"}[5m])))
+    links:
+      dashboard: "{grafana}/d/lark-bank"
+      traces: "{grafana}/explore"
+    debug: { configMap: lark-bank-logging, key: level, levels: [ INFO, DEBUG ] }
+    stats: { preset: jvm }
+
+  - name: bank-checks
+    category: Checks
+    description: Screens each transfer before its money moves, and watches every account for what looks wrong
+    owner: bank
+    repository: github:matthewjones372/tweet-street
+    build: { github: { workflow: build.yml } }
+    runbook: https://github.com/matthewjones372/tweet-street/blob/main/lark-bank/docs/runbook.md#screening-is-slow-or-unanswered
+    environments: [ kind ]
+    kubernetes: { namespace: lark-bank, workloads: [ { kind: Deployment, name: checks } ] }
+    deploy: { flux: { kustomization: apps, imagePolicy: bank-checks } }
+    load:
+      requests: sum(rate(checks_screening_duration_ms_count[1m]))
+      p99: histogram_quantile(0.99, sum by (le) (rate(checks_screening_duration_ms_bucket[5m]))) / 1000
+    links: { traces: "{grafana}/explore" }
+
+  - name: bank-approvals
+    category: Access
+    description: Staff ask for access to a customer's account, and someone else approves it
+    owner: bank
+    repository: github:matthewjones372/tweet-street
+    build: { github: { workflow: build.yml } }
+    environments: [ kind ]
+    kubernetes: { namespace: lark-bank, workloads: [ { kind: Deployment, name: bank-approvals } ] }
+    deploy: { flux: { kustomization: apps, imagePolicy: bank-approvals } }
+    load:
+      requests: sum(rate(http_server_requests_total{app="bank-approvals"}[1m]))
+      errors: sum(rate(http_server_requests_total{app="bank-approvals",status=~"5.."}[1m]))
+    links: { traces: "{grafana}/explore" }
+    debug: { configMap: bank-approvals-logging, key: level, levels: [ INFO, DEBUG ] }
+    stats: { preset: jvm }
+
+  - name: bank-access
+    category: Access
+    description: Who may do what to which account, asked of OpenFGA and kept in step by access-sync
+    owner: bank
+    repository: github:matthewjones372/tweet-street
+    build: { github: { workflow: build.yml } }
+    runbook: https://github.com/matthewjones372/tweet-street/blob/main/lark-bank/docs/runbook.md#bank-access-is-down-or-slow
+    environments: [ kind ]
+    kubernetes:
+      namespace: lark-bank
+      workloads: [ { kind: Deployment, name: bank-access }, { kind: Deployment, name: access-sync } ]
+    deploy: { flux: { kustomization: apps, imagePolicy: bank-access-sync } }
+    load:
+      requests: sum(rate(openfga_request_duration_ms_count{grpc_method="check"}[1m]))
+      p99: histogram_quantile(0.99, sum by (le) (rate(openfga_request_duration_ms_bucket{grpc_method="check"}[5m]))) / 1000
+    links: { traces: "{grafana}/explore" }
+    # access-sync's lines; OpenFGA's level is its own.
+    debug: { configMap: access-sync-logging, key: level, levels: [ INFO, DEBUG ] }
+
+stores:
+  - name: bank-db-0
+    category: Bank
+    description: The first journal, and the read models, the checks', Approvals' and Estate's databases
+    environments: [ kind ]
+    engine: cnpg
+    selector: 'database="bank-db-0"'
+  - name: bank-db-1
+    category: Bank
+    description: The second journal
+    environments: [ kind ]
+    engine: cnpg
+    selector: 'database="bank-db-1"'
+
+alerts:
+  LedgerDoesNotBalance: { impact: "Money is unaccounted for: no transfer should be trusted until the books balance." }
+  BankUnavailable: { impact: "Customers cannot see their accounts or move money." }
+  AccessDown: { impact: "Every request that needs a check is refused: customers and staff are turned away." }
+
+vitals:
+  - title: Transfers
+    query: sum(rate(bank_transfer_steps_total{event="DestinationCredited"}[5m]))
+    unit: /s
+  - title: Ledger out by
+    query: max(abs(bank_ledger_gap)) and on() max(bank_transfers_pending) == 0 or vector(0)
+  - title: Requests
+    query: sum(rate(http_server_requests_total[1m]))
+    unit: /s
+  - title: Slowest p99
+    query: max(histogram_quantile(0.99, sum by (le, app) (rate(http_server_request_duration_seconds_bucket[5m]))))
+    unit: s
+
+map:
+  nodes:
+    - { id: bank, service: lark-bank }
+    - { id: checks, service: bank-checks }
+    - { id: approvals, service: bank-approvals }
+    - { id: access, service: bank-access }
+    - { id: kafka, title: Kafka }
+    - { id: db0, store: bank-db-0 }
+    - { id: db1, store: bank-db-1 }
+    - { id: identity, title: Pocket ID, kind: external }
+  edges:
+    - { from: bank, to: checks, label: screening, rate: 'sum(rate(checks_screening_duration_ms_count[1m]))', alert: ScreeningSlow }
+    - { from: bank, to: access, label: access, rate: 'sum(rate(openfga_request_duration_ms_count{grpc_method="check"}[1m]))', alert: AccessCheckSlow }
+    - { from: bank, to: approvals, label: grants }
+    - { from: bank, to: kafka, label: publishing }
+    - { from: kafka, to: checks, label: monitoring, alert: MonitoringBehind }
+    - { from: bank, to: db0, label: journal, rate: 'sum(rate(bank_account_commands_total[1m]))', alert: JournalUnwritten }
+    - { from: bank, to: db1, label: journal }
+    - { from: approvals, to: identity, label: sign-in }
+    - { from: access, to: identity, label: groups }

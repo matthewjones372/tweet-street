@@ -1,0 +1,26 @@
+# Estate on kind: the kind environment of the bank's catalog, signed in to through the test issuer (anyone may be
+# anyone), at http://localhost:8060 through `kubectl -n lark-bank port-forward svc/estate 8060:80`. An overlay
+# may replace this file.
+port: 8080
+catalog: /etc/estate/catalog.yaml
+environments: [ kind ]
+database: { postgres: "${DATABASE_URL}" }
+cluster: true
+auth:
+  sessionSecret: ${SESSION_SECRET}
+  roles:
+    viewer: [ ops, support, risk, auditor, admins ]
+    operator: [ ops, admins ]
+  oidc:
+    issuer: http://issuer:9000
+    clientId: estate
+    clientSecret: ${CLIENT_SECRET}
+    publicUrl: http://localhost:8060
+sources:
+  kind:
+    prometheus: { url: http://prometheus:9090 }
+    alertmanager: { url: http://alertmanager:9093 }
+    kubernetes: {}
+    flux: {}
+# GitHub's API without a token allows 60 calls an hour: four services every five minutes is 48.
+builds: { github: {}, every: 5m }

@@ -1,0 +1,179 @@
+# bank-access (bank spec 0022): OpenFGA, the estate's one answer to "who may", on a database of its own on bank-db-0,
+# answering only callers with a preshared key: one per service, each in access-keys (development values here; SOPS at
+# home). Two replicas and a disruption budget, since every check fails closed when it is down. The model comes from
+# the bank-access repository, applied by the access-model Job from the image its CI builds.
+apiVersion: v1
+kind: Secret
+metadata: { name: access-keys }
+type: Opaque
+stringData: { model: model-key-dev, bank: bank-key-dev, checks: checks-key-dev, approvals: approvals-key-dev, sync: sync-key-dev }
+---
+apiVersion: v1
+kind: Secret
+metadata: { name: access-db-credentials }
+type: kubernetes.io/basic-auth
+stringData: { username: access, password: access }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata: { name: access }
+spec:
+  cluster: { name: bank-db-0 }
+  name: access
+  owner: access
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: bank-access }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: bank-access } }
+  template:
+    metadata:
+      labels: { app: bank-access }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "2112", prometheus.io/path: /metrics }
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm: { topologyKey: kubernetes.io/hostname, labelSelector: { matchLabels: { app: bank-access } } }
+      # The store's tables, made or brought up to this version before either replica serves.
+      initContainers:
+        - name: migrate
+          image: openfga/openfga:v1.21.0
+          args: [ migrate ]
+          env:
+            - { name: DB_USER, valueFrom: { secretKeyRef: { name: access-db-credentials, key: username } } }
+            - { name: DB_PASSWORD, valueFrom: { secretKeyRef: { name: access-db-credentials, key: password } } }
+            - { name: OPENFGA_DATASTORE_ENGINE, value: postgres }
+            - { name: OPENFGA_DATASTORE_URI, value: "postgres://$(DB_USER):$(DB_PASSWORD)@bank-db-0-rw:5432/access?sslmode=require" }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 128Mi }
+      containers:
+        - name: openfga
+          image: openfga/openfga:v1.21.0
+          args: [ run ]
+          env:
+            - { name: DB_USER, valueFrom: { secretKeyRef: { name: access-db-credentials, key: username } } }
+            - { name: DB_PASSWORD, valueFrom: { secretKeyRef: { name: access-db-credentials, key: password } } }
+            - { name: OPENFGA_DATASTORE_ENGINE, value: postgres }
+            - { name: OPENFGA_DATASTORE_URI, value: "postgres://$(DB_USER):$(DB_PASSWORD)@bank-db-0-rw:5432/access?sslmode=require" }
+            - { name: KEY_MODEL, valueFrom: { secretKeyRef: { name: access-keys, key: model } } }
+            - { name: KEY_BANK, valueFrom: { secretKeyRef: { name: access-keys, key: bank } } }
+            - { name: KEY_CHECKS, valueFrom: { secretKeyRef: { name: access-keys, key: checks } } }
+            - { name: KEY_APPROVALS, valueFrom: { secretKeyRef: { name: access-keys, key: approvals } } }
+            - { name: KEY_SYNC, valueFrom: { secretKeyRef: { name: access-keys, key: sync } } }
+            - { name: OPENFGA_AUTHN_METHOD, value: preshared }
+            - { name: OPENFGA_AUTHN_PRESHARED_KEYS, value: "$(KEY_MODEL),$(KEY_BANK),$(KEY_CHECKS),$(KEY_APPROVALS),$(KEY_SYNC)" }
+            # A revoked grant keeps working at most this long (spec 0022, settled 8).
+            - { name: OPENFGA_CHECK_QUERY_CACHE_ENABLED, value: "true" }
+            - { name: OPENFGA_CHECK_QUERY_CACHE_TTL, value: 10s }
+            - { name: OPENFGA_PLAYGROUND_ENABLED, value: "false" }
+            - { name: OPENFGA_METRICS_ENABLE_RPC_HISTOGRAMS, value: "true" }
+            - { name: OPENFGA_LOG_FORMAT, value: json }
+            # Its own spans, in the caller's trace (bank spec 0024). OpenFGA's sampler ignores the caller's decision and
+            # samples by trace id alone; at the bank's own ratio it keeps exactly the traces the bank keeps, since a ratio
+            # sampler decides from the id the same way in Go and in Java. Change one, change both.
+            - { name: OPENFGA_TRACE_ENABLED, value: "true" }
+            - { name: OPENFGA_TRACE_OTLP_ENDPOINT, value: "tempo:4317" }
+            - { name: OPENFGA_TRACE_SAMPLE_RATIO, value: "0.1" }
+          ports:
+            - { containerPort: 8080, name: http }
+            - { containerPort: 8081, name: grpc }
+            - { containerPort: 2112, name: metrics }
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 5
+          # Measured: 17 MiB idle in Docker, holding the model and a few relationships; the cache and a burst of
+          # ListObjects are what this leaves room for.
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: bank-access }
+spec:
+  minAvailable: 1
+  selector: { matchLabels: { app: bank-access } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: bank-access }
+spec:
+  selector: { app: bank-access }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+    - { name: grpc, port: 8081, targetPort: grpc }
+---
+# The model on main, applied: a new image is a new Job, which writes the model as the store's newest version.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: access-model
+  # A Job's image cannot change in place: Flux replaces it, which is the point.
+  annotations: { kustomize.toolkit.fluxcd.io/force: enabled }
+spec:
+  backoffLimit: 20
+  template:
+    metadata: { labels: { app: access-model } }
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: apply
+          image: bank-access-model:dev
+          imagePullPolicy: IfNotPresent
+          env:
+            - { name: FGA_API_URL, value: "http://bank-access:8080" }
+            - { name: FGA_API_TOKEN, valueFrom: { secretKeyRef: { name: access-keys, key: model } } }
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits: { memory: 128Mi }
+---
+# access-sync (spec 0022): every relationship in the store, from the account and approval events and, where Pocket ID
+# runs, its groups. One replica: what it writes is the same however often it is written.
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: access-sync }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: access-sync } }
+  template:
+    metadata: { labels: { app: access-sync } }
+    spec:
+      containers:
+        - name: sync
+          image: bank-access-sync:dev
+          imagePullPolicy: IfNotPresent
+          env:
+            - { name: KAFKA_BOOTSTRAP, value: "kafka:9092" }
+            - { name: KAFKA_USERNAME, value: access-sync }
+            - { name: KAFKA_PASSWORD, valueFrom: { secretKeyRef: { name: kafka-users, key: access-sync } } }
+            - { name: FGA_API_URL, value: "http://bank-access:8080" }
+            - { name: FGA_API_TOKEN, valueFrom: { secretKeyRef: { name: access-keys, key: sync } } }
+            # Its spans to Tempo (spec 0024): those of traced events, and one in ten of any it starts.
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://tempo:4318" }
+            - { name: TRACES_SAMPLED, value: "0.1" }
+            # Its level, reread every ten seconds from access-sync-logging, which Estate's debug switch patches.
+            - { name: LOG_LEVEL_FILE, value: /etc/access-sync/logging/level }
+          volumeMounts:
+            - { name: logging, mountPath: /etc/access-sync/logging, readOnly: true }
+          resources:
+            requests: { cpu: 50m, memory: 192Mi }
+            limits: { memory: 384Mi }
+      volumes:
+        - name: logging
+          configMap: { name: access-sync-logging }
+---
+# access-sync's log level (bank spec 0026): INFO, turned to DEBUG for a while by Estate's debug switch, which turns it back.
+# Flux makes it once and leaves it, so a reconcile never undoes a switch.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: access-sync-logging
+  annotations: { kustomize.toolkit.fluxcd.io/ssa: IfNotPresent }
+data:
+  level: INFO
+

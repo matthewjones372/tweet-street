@@ -1,0 +1,30 @@
+# One scenario of load, run inside the cluster against the Service. load.sh fills in the name and the environment.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: load-SCENARIO
+  namespace: lark-bank
+spec:
+  backoffLimit: 0
+  template:
+    metadata: { labels: { app: load, scenario: SCENARIO } }
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: load
+          image: lark-bank-loadtest:dev
+          imagePullPolicy: Never
+          env:
+            - { name: SCENARIO, value: SCENARIO }
+            - { name: BASE_URL, value: "http://lark-bank:8080" }
+            - { name: ISSUER_URL, value: "http://issuer:9000" }
+            - { name: RATE, value: "RATE_VALUE" }
+            - { name: SECONDS, value: "SECONDS_VALUE" }
+            - { name: ACCOUNTS, value: "ACCOUNTS_VALUE" }
+            - { name: HOT_ACCOUNTS, value: "HOT_VALUE" }
+            - { name: REPORT_DIR, value: /reports }
+            - { name: HOLD_SECONDS, value: "120" }
+          resources:
+            requests: { cpu: "1", memory: 1Gi }
+          volumeMounts: [ { name: reports, mountPath: /reports } ]
+      volumes: [ { name: reports, emptyDir: {} } ]

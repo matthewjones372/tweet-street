@@ -1,0 +1,13 @@
+# Estate as two runners of one cluster, as a component an estate's overlay adds beside the base:
+#   resources: [ <path>/deploy ]
+#   components: [ <path>/deploy/cluster ]
+# Two replicas, each pod's IP as its runner address, the runners' port open between Estate's pods and no one else, and
+# a budget that keeps one serving through a drain. The overlay's estate.yaml says `cluster: true` and keeps notes in
+# Postgres, where the runners find each other.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - disruption.yaml
+  - networkpolicy.yaml
+patches:
+  - path: runners.yaml

@@ -1,0 +1,155 @@
+# The model's specification (lark-bank spec 0022's access-model): each relation, as the estate relies on it. A grant is
+# written with its expiry; each check says what time it is, as access-client does.
+name: bank-access
+model_file: ./model.fga
+
+tuples:
+  # The bank, and who runs and audits it, from Pocket ID's groups.
+  - { user: group:ops#member, relation: ops, object: bank:lark }
+  - { user: group:auditor#member, relation: auditor, object: bank:lark }
+  - { user: person:olga, relation: member, object: group:ops }
+  - { user: person:aud, relation: member, object: group:auditor }
+  - { user: person:rae, relation: member, object: group:risk }
+  - { user: person:sam, relation: member, object: group:support }
+  # Ada's account, opened by her.
+  - { user: bank:lark, relation: bank, object: account:acc-1 }
+  - { user: person:ada, relation: owner, object: account:acc-1 }
+  - { user: bank:lark, relation: bank, object: account:acc-2 }
+  - { user: person:eve, relation: owner, object: account:acc-2 }
+  # Bob, in support, may see acc-1 until 17:00, and act as Ada until 16:30: two approvals in bank-approvals.
+  - user: person:bob
+    relation: supporter
+    object: account:acc-1
+    condition: { name: not_expired, context: { expires: "2026-10-02T17:00:00Z" } }
+  - user: person:bob
+    relation: impersonator
+    object: person:ada
+    condition: { name: not_expired, context: { expires: "2026-10-02T16:30:00Z" } }
+  # A rule bank-checks keeps: risk writes it, risk approves it.
+  - { user: bank:lark, relation: bank, object: rule:large-transfer }
+  - { user: group:risk#member, relation: author, object: rule:large-transfer }
+  - { user: group:risk#member, relation: approver, object: rule:large-transfer }
+
+tests:
+  - name: an owner sees and pays their account, and a stranger neither
+    check:
+      - user: person:ada
+        object: account:acc-1
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { owner: true, viewer: true, payer: true }
+      - user: person:eve
+        object: account:acc-1
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { owner: false, viewer: false, payer: false, supporter: false }
+    list_objects:
+      - user: person:ada
+        type: account
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { viewer: [ account:acc-1 ], payer: [ account:acc-1 ] }
+
+  - name: support sees the one account a grant names while it lives, never pays, and sees nothing once it has expired
+    check:
+      - user: person:bob
+        object: account:acc-1
+        context: { current_time: "2026-10-02T16:59:59Z" }
+        assertions: { supporter: true, viewer: true, payer: false }
+      - user: person:bob
+        object: account:acc-2
+        context: { current_time: "2026-10-02T16:59:59Z" }
+        assertions: { viewer: false }
+      - user: person:bob
+        object: account:acc-1
+        context: { current_time: "2026-10-02T17:00:00Z" }
+        assertions: { supporter: false, viewer: false, payer: false }
+      # Being in support is not a grant: Sam holds none.
+      - user: person:sam
+        object: account:acc-1
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { viewer: false }
+    list_objects:
+      - user: person:bob
+        type: account
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { viewer: [ account:acc-1 ], payer: [] }
+      - user: person:bob
+        type: account
+        context: { current_time: "2026-10-02T18:00:00Z" }
+        assertions: { viewer: [] }
+
+  - name: an auditor sees every account and cannot pay from any, and ops see none
+    check:
+      - user: person:aud
+        object: account:acc-1
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { viewer: true, payer: false }
+      - user: person:aud
+        object: account:acc-2
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { viewer: true, payer: false }
+      - user: person:olga
+        object: account:acc-1
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { viewer: false, payer: false }
+    list_objects:
+      - user: person:aud
+        type: account
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { viewer: [ account:acc-1, account:acc-2 ], payer: [] }
+
+  - name: an impersonator acts as Ada only while the grant lives, and only for Ada
+    check:
+      - user: person:bob
+        object: person:ada
+        context: { current_time: "2026-10-02T16:29:59Z" }
+        assertions: { impersonator: true }
+      - user: person:bob
+        object: person:ada
+        context: { current_time: "2026-10-02T16:30:00Z" }
+        assertions: { impersonator: false }
+      - user: person:bob
+        object: person:eve
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { impersonator: false }
+      - user: person:sam
+        object: person:ada
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { impersonator: false }
+    list_users:
+      - object: person:ada
+        user_filter: [ { type: person } ]
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions:
+          impersonator: { users: [ person:bob ] }
+
+  - name: a rule is written and approved by risk, and seen by risk, ops and audit, and by nobody else
+    check:
+      - user: person:rae
+        object: rule:large-transfer
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { author: true, approver: true, viewer: true }
+      - user: person:olga
+        object: rule:large-transfer
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { author: false, approver: false, viewer: true }
+      - user: person:aud
+        object: rule:large-transfer
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { author: false, viewer: true }
+      - user: person:ada
+        object: rule:large-transfer
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions: { author: false, approver: false, viewer: false }
+
+  - name: who can see acc-1, as the auditor asks it
+    list_users:
+      - object: account:acc-1
+        user_filter: [ { type: person } ]
+        context: { current_time: "2026-10-02T12:00:00Z" }
+        assertions:
+          viewer: { users: [ person:ada, person:aud, person:bob ] }
+          payer: { users: [ person:ada ] }
+      - object: account:acc-1
+        user_filter: [ { type: person } ]
+        context: { current_time: "2026-10-02T18:00:00Z" }
+        assertions:
+          viewer: { users: [ person:ada, person:aud ] }

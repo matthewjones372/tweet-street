@@ -1,0 +1,82 @@
+# One Kafka broker in KRaft mode, where every event is published (bank spec 0015): a copy of the journal for other
+# services, never the truth. Its log is on a volume, because the bank's publishers save their offsets once the broker
+# has an event: a broker that forgot what it had would leave a gap nobody resends.
+#
+# Every client signs in as its service, with SCRAM-SHA-512, and may do only what kafka/setup.sh allows it (bank spec
+# 0021). The setup runs in the broker's own container, over a listener on 127.0.0.1 that nothing outside the pod can
+# reach, and the broker is ready once it has. Passwords are in kafka-users: development values here, SOPS at home.
+apiVersion: v1
+kind: Secret
+metadata: { name: kafka-users }
+type: Opaque
+stringData: { bank: bank-kafka, checks: checks-kafka, approvals: approvals-kafka, access-sync: access-sync-kafka }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+spec:
+  serviceName: kafka
+  replicas: 1
+  selector: { matchLabels: { app: kafka } }
+  template:
+    metadata: { labels: { app: kafka } }
+    spec:
+      # The image runs as appuser, 1000, which must own the volume.
+      securityContext: { fsGroup: 1000 }
+      containers:
+        - name: kafka
+          image: apache/kafka:3.9.1
+          command: [ bash, -c, "(/kafka/setup.sh > /tmp/setup.log 2>&1 && touch /tmp/ready) & exec /etc/kafka/docker/run" ]
+          env:
+            - { name: KAFKA_NODE_ID, value: "1" }
+            - { name: KAFKA_PROCESS_ROLES, value: "broker,controller" }
+            - { name: KAFKA_LISTENERS, value: "CLIENT://:9092,CONTROLLER://127.0.0.1:9093,LOCAL://127.0.0.1:9094" }
+            - { name: KAFKA_ADVERTISED_LISTENERS, value: "CLIENT://kafka:9092,LOCAL://127.0.0.1:9094" }
+            - { name: KAFKA_CONTROLLER_LISTENER_NAMES, value: CONTROLLER }
+            - { name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP, value: "CONTROLLER:PLAINTEXT,LOCAL:PLAINTEXT,CLIENT:SASL_PLAINTEXT" }
+            - { name: KAFKA_INTER_BROKER_LISTENER_NAME, value: LOCAL }
+            - { name: KAFKA_SASL_ENABLED_MECHANISMS, value: SCRAM-SHA-512 }
+            - name: KAFKA_LISTENER_NAME_CLIENT_SCRAM___SHA___512_SASL_JAAS_CONFIG
+              value: "org.apache.kafka.common.security.scram.ScramLoginModule required;"
+            - { name: KAFKA_AUTHORIZER_CLASS_NAME, value: org.apache.kafka.metadata.authorizer.StandardAuthorizer }
+            # Only the controller's and the setup's listeners, both on 127.0.0.1, see someone who has not signed in.
+            - { name: KAFKA_SUPER_USERS, value: "User:ANONYMOUS" }
+            - { name: KAFKA_PASSWORD_BANK, valueFrom: { secretKeyRef: { name: kafka-users, key: bank } } }
+            - { name: KAFKA_PASSWORD_CHECKS, valueFrom: { secretKeyRef: { name: kafka-users, key: checks } } }
+            - { name: KAFKA_PASSWORD_APPROVALS, valueFrom: { secretKeyRef: { name: kafka-users, key: approvals } } }
+            - { name: KAFKA_PASSWORD_ACCESS_SYNC, valueFrom: { secretKeyRef: { name: kafka-users, key: access-sync } } }
+            - { name: KAFKA_CONTROLLER_QUORUM_VOTERS, value: "1@127.0.0.1:9093" }
+            - { name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR, value: "1" }
+            - { name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR, value: "1" }
+            - { name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR, value: "1" }
+            - { name: KAFKA_LOG_DIRS, value: /var/lib/kafka/data }
+            # The rest of the container's memory is the page cache Kafka reads from.
+            - { name: KAFKA_HEAP_OPTS, value: "-Xmx512m -Xms512m" }
+          ports: [ { containerPort: 9092, name: kafka } ]
+          # Ready once its users and ACLs are in place.
+          readinessProbe:
+            exec: { command: [ test, -f, /tmp/ready ] }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 500m, memory: 1Gi }
+            limits: { memory: 1Gi }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/kafka/data }
+            - { name: setup, mountPath: /kafka, readOnly: true }
+      volumes:
+        - name: setup
+          configMap: { name: kafka-setup, defaultMode: 0755 }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ ReadWriteOnce ]
+        resources: { requests: { storage: 20Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+spec:
+  selector: { app: kafka }
+  ports: [ { port: 9092, targetPort: kafka } ]

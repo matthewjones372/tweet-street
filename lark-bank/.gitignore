@@ -1,0 +1,15 @@
+build/
+.gradle/
+.idea/
+*.iml
+.DS_Store
+.kotlin/
+
+# nix build
+result
+result-*
+
+# CI: Lark and Pelican checked out beside the bank, and the Nix shell kept as a profile (bank spec 0017).
+/lark/
+/pelican/
+/.nix-ci*

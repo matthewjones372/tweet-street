@@ -1,0 +1,60 @@
+{
+  "nodes": {
+    "lark": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790961258,
+        "narHash": "sha256-RI39YhQLHtbQyLJsrOcvkVfBOQttDXme2S2Jo8vKn44=",
+        "ref": "refs/heads/main",
+        "rev": "4e6aa925c469770b9a3c2d776a0449f8ea58ce75",
+        "shallow": true,
+        "type": "git",
+        "url": "https://github.com/matthewjones372/lark"
+      },
+      "original": {
+        "shallow": true,
+        "type": "git",
+        "url": "https://github.com/matthewjones372/lark"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1790450978,
+        "narHash": "sha256-GM0+sQwNfU1In6UEyBwpwjG3vX3g81kfKvcTlW2muL0=",
+        "rev": "5e2305d577ca00acbba631b05cb1094d172b29f3",
+        "type": "tarball",
+        "url": "https://releases.nixos.org/nixos/26.05/nixos-26.05.10718.5e2305d577ca/nixexprs.tar.xz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://channels.nixos.org/nixos-26.05/nixexprs.tar.xz"
+      }
+    },
+    "pelican": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790960514,
+        "narHash": "sha256-AxEVzEKz4gDB6k0Tpqu0UR3QWTBqnUcvrL+PJrsfeBA=",
+        "ref": "refs/heads/main",
+        "rev": "332532e16a9ae76ec7d5d6386ba60f3abb167d31",
+        "shallow": true,
+        "type": "git",
+        "url": "https://github.com/matthewjones372/pelican"
+      },
+      "original": {
+        "shallow": true,
+        "type": "git",
+        "url": "https://github.com/matthewjones372/pelican"
+      }
+    },
+    "root": {
+      "inputs": {
+        "lark": "lark",
+        "nixpkgs": "nixpkgs",
+        "pelican": "pelican"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

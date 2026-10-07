@@ -1,0 +1,43 @@
+# The test identity provider (bank spec 0021), from the load's image: anyone may sign in as anyone. kind and the load
+# trust it; a real deployment deletes it and names its own identity provider. Tokens name http://issuer:9000; a browser on the
+# host is sent to localhost:9000 through kind's port mapping.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: issuer
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: issuer } }
+  template:
+    metadata: { labels: { app: issuer } }
+    spec:
+      containers:
+        - name: issuer
+          image: lark-bank-loadtest:dev
+          imagePullPolicy: Never
+          command: [ "java", "-XX:MaxRAMPercentage=50", "-cp", "/opt/loadtest/lib/*", "bank.issuer.TestIssuerKt" ]
+          env:
+            - { name: ISSUER_URL, value: "http://issuer:9000" }
+            - { name: ISSUER_BROWSER_URL, value: "http://localhost:9000" }
+          ports: [ { containerPort: 9000, name: http } ]
+          readinessProbe: { tcpSocket: { port: http }, periodSeconds: 2 }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: issuer
+spec:
+  type: NodePort
+  selector: { app: issuer }
+  ports: [ { port: 9000, targetPort: http, nodePort: 30900, name: http } ]
+---
+# The key every node seals page sessions with: a development one here, SOPS's at home.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bank-identity
+stringData:
+  sessionKey: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=

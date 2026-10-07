@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Payroll · Lark Bank</title>
+  <link rel="stylesheet" href="bank.css">
+</head>
+<body>
+<header>
+  <strong>Lark Bank</strong>
+  <nav>
+    <a href="./">Accounts</a>
+    <a href="transfer.html">Transfer</a>
+    <a href="payroll.html" aria-current="page">Payroll</a>
+    <a href="ops.html">Ops</a>
+    <a href="/api-docs">API</a>
+  </nav>
+</header>
+<main>
+  <section>
+    <h2>Pay many accounts at once</h2>
+    <form id="payroll">
+      <label style="width: 100%">One credit a line: account, amount, currency
+        <textarea name="credits" placeholder="acc-1, 1200.00, GBP&#10;acc-2, 0.015, BTC" required></textarea>
+      </label>
+      <button>Send payroll</button>
+      <button type="button" class="quiet" id="again" hidden>Send again</button>
+    </form>
+    <p class="muted">Payroll id <code id="payroll-id"></code>. Each credit goes to its account through a reliable
+      producer, and is confirmed once written; sending the payroll again credits nobody twice.</p>
+    <p id="result" class="message" hidden></p>
+  </section>
+</main>
+<script type="module">
+  import * as bank from "./bank.js";
+  const { $, decimal, refusal, retryable, show } = bank;
+
+  const id = bank.reference("payroll");
+  $("#payroll-id").textContent = id;
+  let credits = null;
+
+  async function send() {
+    $("#again").hidden = true;
+    show($("#result"), "Sending…", "wait");
+    const answer = await bank.payroll(id, credits);
+    if (answer.ok) {
+      show($("#result"), `Accepted: ${answer.body.sent} credits sent`, "good");
+    } else if (retryable(answer)) {
+      show($("#result"), `${refusal(answer)}. Send again is safe: each credit's reference is its own.`, "wait");
+      $("#again").hidden = false;
+    } else {
+      show($("#result"), refusal(answer), "bad");
+    }
+  }
+
+  $("#payroll").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const lines = new FormData(event.target).get("credits").split("\n").map((line) => line.trim()).filter(Boolean);
+    const parsed = lines.map((line) => {
+      const [account, amount, currency] = line.split(",").map((part) => part.trim());
+      return { account, amount: { value: decimal(amount), currency: (currency ?? "").toUpperCase() } };
+    });
+    const bad = parsed.findIndex((credit) => !credit.account || credit.amount.value === null || !credit.amount.currency);
+    if (bad >= 0) return show($("#result"), `Line ${bad + 1} is not "account, amount, currency"`, "bad");
+    credits = parsed;
+    send();
+  });
+  $("#again").addEventListener("click", () => credits && send());
+</script>
+</body>
+</html>

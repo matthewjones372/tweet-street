@@ -1,0 +1,17 @@
+# Garage, the S3 server the journal's backups go to (bank specs 0009 and 0010): one node, everything it keeps on one
+# volume, which at home is network storage, so the backups outlive any machine. SQLite for the metadata: LMDB maps
+# its file into memory, which a network filesystem does not keep safe. IPv4 binds: not every cluster network has v6.
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+replication_factor = 1
+
+rpc_bind_addr = "0.0.0.0:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+[s3_api]
+s3_region = "us-east-1"
+api_bind_addr = "0.0.0.0:3900"
+
+[admin]
+api_bind_addr = "0.0.0.0:3903"

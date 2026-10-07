@@ -1,0 +1,40 @@
+// Every decision bank-access was asked for that someone may want to account for later, on the topic
+// bank.access-decisions, keyed by the object asked about (bank spec 0022): every refusal, and every check made by
+// someone in a staff group or acting as someone else. A customer seeing their own is not kept: it would be almost
+// everything, and say nothing. Only ever added to: see money.proto.
+syntax = "proto3";
+
+package bank.events.v1;
+
+option java_multiple_files = true;
+option java_package = "bank.events.v1";
+
+// One decision. First in this file, as the topic's message: its records name it by index 0.
+message AccessDecision {
+  // A random id, unique: what a consumer dedupes on.
+  string id = 1;
+  int64 at_millis = 2;
+  // The service that asked.
+  string service = 3;
+  // Whose relation was asked about: the customer, when someone was acting as them.
+  string subject = 4;
+  // Who was really there, when someone was acting as the subject; unset otherwise.
+  optional string actor = 5;
+  repeated string groups = 6;
+  // The model's relation and the object, as bank-access names them: "viewer", "account:acc-1".
+  string relation = 7;
+  string object = 8;
+  Answer answer = 9;
+  // Why it was unanswered, when it was.
+  optional string unanswered_because = 10;
+  // The address the request came from, as the ingress forwarded it.
+  optional string address = 11;
+
+  enum Answer {
+    ANSWER_UNSPECIFIED = 0;
+    ANSWER_YES = 1;
+    ANSWER_NO = 2;
+    // bank-access did not answer in time, or at all: the request was refused, as every unanswered one is.
+    ANSWER_UNANSWERED = 3;
+  }
+}

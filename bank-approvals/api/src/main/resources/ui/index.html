@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Approvals</title>
+  <link rel="stylesheet" href="approvals.css">
+</head>
+<body>
+<header>
+  <strong>Approvals</strong>
+  <nav>
+    <a href="./" aria-current="page">Requests</a>
+    <a href="/api-docs">API</a>
+  </nav>
+</header>
+<main>
+  <section>
+    <h2>Waiting on me</h2>
+    <ul id="waiting" class="requests"></ul>
+    <p id="waiting-none" class="muted" hidden>Nothing is waiting for your approval.</p>
+  </section>
+
+  <section>
+    <h2>Asked by me</h2>
+    <ul id="mine" class="requests"></ul>
+    <p id="mine-none" class="muted" hidden>You have asked for nothing yet.</p>
+  </section>
+
+  <section>
+    <h2>Recent</h2>
+    <ul id="recent" class="requests"></ul>
+    <p id="recent-none" class="muted" hidden>No request you may read.</p>
+  </section>
+</main>
+<script type="module">
+  import { $, list, signedIn, stateLabel, when } from "./approvals.js";
+
+  await signedIn();
+
+  for (const which of ["waiting", "mine", "recent"]) {
+    const result = await list(which);
+    const requests = result.ok ? result.body : [];
+    for (const each of requests) {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      link.className = "what";
+      link.href = `request.html?id=${encodeURIComponent(each.id)}`;
+      link.textContent = each.title;
+      const about = document.createElement("span");
+      about.className = "muted";
+      about.textContent = `${each.subject} · ${each.requester.name} · ${each.approvals} of ${each.needed} · ${when(each.at)}`;
+      item.append(link, about, stateLabel(each.state));
+      $(`#${which}`).append(item);
+    }
+    $(`#${which}-none`).hidden = requests.length > 0;
+  }
+</script>
+</body>
+</html>

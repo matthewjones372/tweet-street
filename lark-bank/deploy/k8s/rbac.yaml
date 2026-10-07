@@ -1,0 +1,20 @@
+# What lark-cluster-kubernetes asks of the API: the running pods to seed from, and the Lease that breaks an even split.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lark-bank
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lark-cluster
+rules:
+  - { apiGroups: [ "" ], resources: [ pods ], verbs: [ list ] }
+  - { apiGroups: [ coordination.k8s.io ], resources: [ leases ], verbs: [ get, create, update ] }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lark-cluster
+subjects: [ { kind: ServiceAccount, name: lark-bank } ]
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: lark-cluster }

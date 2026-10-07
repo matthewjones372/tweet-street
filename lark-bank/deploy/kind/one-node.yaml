@@ -1,0 +1,15 @@
+# Everything on one node, for a machine short of disk: kind copies each loaded image into every node, and the
+# three-worker cluster.yaml takes four copies of each. Nothing crosses a network between nodes here, so it shows that
+# everything runs together, not how it behaves when a node goes. `KIND_CONFIG=deploy/kind/one-node.yaml scripts/up.sh`.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: lark-bank
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - { containerPort: 30080, hostPort: 8080 }   # the bank
+      - { containerPort: 30300, hostPort: 3000 }   # Grafana
+      - { containerPort: 30090, hostPort: 9090 }   # Prometheus
+      - { containerPort: 30900, hostPort: 9000 }   # the test issuer (bank spec 0021)
+      - { containerPort: 30890, hostPort: 8090 }   # the checks' wizard (bank spec 0018)
+      - { containerPort: 30870, hostPort: 8070 }   # Approvals (bank spec 0019)

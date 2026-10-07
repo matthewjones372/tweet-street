@@ -1,0 +1,7 @@
+# Gradle and Nix outputs, never committed.
+.gradle/
+.kotlin/
+build/
+*/build/
+result
+result-*

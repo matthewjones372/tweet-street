@@ -1,0 +1,59 @@
+# What Estate reads across the cluster, as Estate's deploy/ grants it, and the one thing it writes: the three
+# services' logging ConfigMaps, for debug, and no other.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: estate-reader
+rules:
+  - apiGroups: [""]
+    resources: [pods, pods/log, configmaps]
+    verbs: [get, list]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, daemonsets]
+    verbs: [get, list]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list]
+  - apiGroups: [kustomize.toolkit.fluxcd.io]
+    resources: [kustomizations]
+    verbs: [get, list]
+  - apiGroups: [image.toolkit.fluxcd.io]
+    resources: [imagepolicies, imagerepositories]
+    verbs: [get, list]
+  - apiGroups: [helm.toolkit.fluxcd.io]
+    resources: [helmreleases]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: estate-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: estate-reader
+subjects:
+  - kind: ServiceAccount
+    name: estate
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: estate-debug
+rules:
+  - apiGroups: [""]
+    resources: [configmaps]
+    resourceNames: [ lark-bank-logging, bank-approvals-logging, access-sync-logging ]
+    verbs: [patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: estate-debug
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: estate-debug
+subjects:
+  - kind: ServiceAccount
+    name: estate

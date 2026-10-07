@@ -1,0 +1,157 @@
+// Every event of every request for approval, on the topic bank.approval-events, keyed by request id (lark-bank spec
+// 0019). bank-approvals writes them; the service that owns a request's subject applies it on ApprovalGiven or
+// AutoApproved, and treats Rejected, Withdrawn, Superseded and Expired as the change not happening. Only ever added
+// to: see money.proto. The cases are nested, since transfer.proto already has a Requested and a Rejected.
+syntax = "proto3";
+
+package bank.events.v1;
+
+option java_multiple_files = true;
+option java_package = "bank.events.v1";
+
+// One request event. First in this file, as the topic's message: its records name it by index 0.
+message ApprovalEvent {
+  string request_id = 1;
+  // The event's place in its request, from 1; (request_id, sequence) is unique, and what a consumer dedupes on. A
+  // request still waiting to be applied has its ApprovalGiven or AutoApproved sent again, under the same sequence,
+  // until its owner says it applied it.
+  int64 sequence = 2;
+  int64 at_millis = 3;
+  // The request's kind and subject on every event, so an owning service picks out its own without remembering each
+  // request's Requested.
+  string kind = 4;
+  string subject = 5;
+  // Where a person's act came from; unset on what the service records itself (expiry, approval given).
+  Origin origin = 6;
+  // A case this consumer does not know (one added after it was built) arrives unset: skip the event, never fail.
+  oneof event {
+    Requested requested = 10;
+    AutoApproved auto_approved = 11;
+    AwaitingApproval awaiting_approval = 12;
+    Approved approved = 13;
+    ApprovalGiven approval_given = 14;
+    Rejected rejected = 15;
+    Commented commented = 16;
+    VoteRefused vote_refused = 17;
+    Withdrawn withdrawn = 18;
+    Superseded superseded = 19;
+    Expired expired = 20;
+    Applied applied = 21;
+    ApplyFailed apply_failed = 22;
+  }
+
+  // The signed-in session, the address the ingress forwarded, and the user agent, as the request carried them.
+  message Origin {
+    string session = 1;
+    string address = 2;
+    string user_agent = 3;
+  }
+
+  // Someone signed in: the identity provider's subject, the name they gave, and their groups when they acted.
+  message Person {
+    string subject = 1;
+    string name = 2;
+    repeated string groups = 3;
+  }
+
+  // What was asked, fixed from here on. The owning service applies only a change whose content_hash is still this.
+  message Requested {
+    string title = 1;
+    string before = 2;
+    string after = 3;
+    map<string, string> facts = 4;
+    optional string impact = 5;
+    optional string link = 6;
+    Person requester = 7;
+    // What every vote is cast on, and what the owning service checks before it acts: the SHA-256, as lowercase hex, of
+    // the UTF-8 text "before" NUL before NUL "after" NUL after NUL "facts" NUL, then each fact as key=value, sorted by
+    // key and joined by newlines.
+    string content_hash = 8;
+    // The reviewed policies.yaml the request was decided by, and what it asked of this kind.
+    string policy_version = 9;
+    repeated string approvers = 10;
+    int32 needed = 11;
+    int64 expires_at_millis = 12;
+  }
+
+  // Nobody need look: the policy's condition matched the facts. The owning service may apply it.
+  message AutoApproved {
+    map<string, string> condition = 1;
+    // The content approved: apply only if the change in hand still hashes to it.
+    string content_hash = 2;
+  }
+
+  message AwaitingApproval {
+    int32 needed = 1;
+    repeated string approvers = 2;
+  }
+
+  message Approved {
+    Person by = 1;
+    string content_hash = 2;
+    optional string comment = 3;
+  }
+
+  // Enough distinct people approved: the owning service may apply it.
+  message ApprovalGiven {
+    // Their subjects, in the order they approved.
+    repeated string approvers = 1;
+    // The content approved: apply only if the change in hand still hashes to it.
+    string content_hash = 2;
+  }
+
+  message Rejected {
+    Person by = 1;
+    string comment = 2;
+  }
+
+  message Commented {
+    Person by = 1;
+    string text = 2;
+  }
+
+  // A vote the rules turned away, and why. It changes nothing but the record.
+  message VoteRefused {
+    Person by = 1;
+    Refusal because = 2;
+  }
+
+  message Withdrawn {
+    Person by = 1;
+  }
+
+  // A newer request for the same subject took its place.
+  message Superseded {
+    string by_request_id = 1;
+  }
+
+  // No decision in its time.
+  message Expired {}
+
+  // The owning service applied it: the request's last event.
+  message Applied {
+    // The service that said so, and the content it applied, which is always the content approved.
+    Person by = 1;
+    string content_hash = 2;
+  }
+
+  // The owning service could not apply it, and why; it is asked again.
+  message ApplyFailed {
+    string reason = 1;
+    Person by = 2;
+  }
+
+  enum Refusal {
+    REFUSAL_UNSPECIFIED = 0;
+    // Nobody approves their own change.
+    REFUSAL_OWN_REQUEST = 1;
+    // Nobody counts twice.
+    REFUSAL_ALREADY_APPROVED = 2;
+    // Not in any group the policy names.
+    REFUSAL_NOT_AN_APPROVER = 3;
+    // The request had already been decided, withdrawn or ended.
+    REFUSAL_ENDED = 4;
+    // Cast on content other than what was asked.
+    REFUSAL_NOT_WHAT_WAS_ASKED = 5;
+  }
+}

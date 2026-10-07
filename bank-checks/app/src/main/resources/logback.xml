@@ -1,0 +1,26 @@
+<configuration>
+  <!-- One JSON object per line (lark-bank spec 0023), the estate's field names; ZIO's annotations and spans arrive as
+       MDC through zio-logging's SLF4J backend, and are fields of their own. LOG_FORMAT=plain is a line for a terminal. -->
+  <appender name="json" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSS'Z'</timestampPattern>
+      <timeZone>UTC</timeZone>
+      <fieldNames>
+        <timestamp>ts</timestamp>
+        <message>msg</message>
+        <logger>logger</logger>
+        <thread>thread</thread>
+        <stackTrace>error</stackTrace>
+        <version>[ignore]</version>
+        <levelValue>[ignore]</levelValue>
+      </fieldNames>
+      <customFields>{"service":"bank-checks","node":"${POD_NAME:-${HOSTNAME}}"}</customFields>
+    </encoder>
+  </appender>
+  <appender name="plain" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder><pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{20} %msg %X%n</pattern></encoder>
+  </appender>
+  <logger name="org.apache.kafka" level="WARN"/>
+  <logger name="io.netty" level="WARN"/>
+  <root level="INFO"><appender-ref ref="${LOG_FORMAT:-json}"/></root>
+</configuration>

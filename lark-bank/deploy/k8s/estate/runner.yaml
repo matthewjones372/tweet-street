@@ -1,0 +1,15 @@
+# Estate's database address, with the password from its login's Secret; and its own metrics, for Prometheus.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: estate
+spec:
+  template:
+    metadata:
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "9464", prometheus.io/path: /metrics }
+    spec:
+      containers:
+        - name: estate
+          env:
+            - { name: DATABASE_PASSWORD, valueFrom: { secretKeyRef: { name: estate-db-credentials, key: password } } }
+            - { name: DATABASE_URL, value: "postgres://estate:$(DATABASE_PASSWORD)@bank-db-0-rw:5432/estate" }

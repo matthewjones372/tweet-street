@@ -1,0 +1,143 @@
+:root {
+  --ink: #1d2433;
+  --muted: #5b6475;
+  --line: #d9dde5;
+  --paper: #ffffff;
+  --wash: #f4f6f9;
+  --accent: #2f5bd3;
+  --good: #1f7a4d;
+  --bad: #b3261e;
+  --warn: #8a5a00;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+/* Hidden means hidden, whatever display a rule below gives the element. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--wash);
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  padding: 14px 24px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+
+header strong { font-size: 17px; }
+header nav { display: flex; gap: 16px; }
+header a { color: var(--muted); text-decoration: none; }
+header a[aria-current="page"] { color: var(--accent); font-weight: 600; }
+header .who { margin-left: auto; color: var(--muted); }
+
+main { max-width: 960px; margin: 24px auto; padding: 0 16px; display: grid; gap: 16px; }
+
+section {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+h1 { font-size: 22px; margin: 0; }
+h2 { font-size: 16px; margin: 0 0 12px; }
+
+form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+input, textarea {
+  font: inherit;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-width: 140px;
+}
+textarea { width: 100%; min-height: 140px; font-family: ui-monospace, monospace; }
+
+button {
+  font: inherit;
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+button.quiet { background: var(--paper); color: var(--accent); }
+
+.balance { font-size: 32px; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); font-size: 13px; }
+code { font-family: ui-monospace, monospace; font-size: 13px; }
+
+.message { padding: 8px 12px; border-radius: 6px; margin-top: 10px; }
+.message[data-kind="good"] { background: #e6f4ec; color: var(--good); }
+.message[data-kind="bad"] { background: #fbe9e7; color: var(--bad); }
+.message[data-kind="wait"] { background: #fff4db; color: var(--warn); }
+
+
+/* Lists: one request a row, where it stands at a glance. */
+ul.requests { list-style: none; margin: 0; padding: 0; }
+ul.requests li { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: baseline; }
+ul.requests li:last-child { border-bottom: none; }
+ul.requests .what { flex: 1; }
+
+.state {
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--wash);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.state[data-state="awaiting-approval"] { background: #fff4db; color: var(--warn); border-color: #f0dcae; }
+.state[data-state="approved"] { background: #e8eefc; color: var(--accent); border-color: #c8d5f6; }
+.state[data-state="applied"] { background: #e6f4ec; color: var(--good); border-color: #bfe2cf; }
+.state[data-state="rejected"], .state[data-state="expired"] { background: #fbe9e7; color: var(--bad); border-color: #f1c6c1; }
+
+/* The diff: the subject as it is now beside what it would be. */
+.diff { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.diff h3 { font-size: 13px; color: var(--muted); font-weight: 500; margin: 0 0 6px; }
+.diff pre {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--wash);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: 13px/1.6 ui-monospace, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  min-height: 3em;
+}
+.diff .line { display: block; }
+.diff .removed { background: #fbe9e7; }
+.diff .added { background: #e6f4ec; }
+.diff del { background: #f4c7c1; text-decoration: line-through; }
+.diff ins { background: #bfe2cf; text-decoration: none; }
+
+dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
+dl.facts dt { color: var(--muted); font-size: 13px; }
+dl.facts dd { margin: 0; }
+
+/* The thread: every act in order, votes and refusals included. */
+ol.timeline { list-style: none; margin: 0; padding: 0; }
+ol.timeline li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+ol.timeline li:last-child { border-bottom: none; }
+ol.timeline .head { display: flex; gap: 8px; align-items: baseline; }
+ol.timeline .text { margin: 4px 0 0; white-space: pre-wrap; }
+ol.timeline time { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+.actions { display: grid; gap: 12px; }
+.actions textarea { min-height: 70px; font-family: inherit; }
+
+@media (max-width: 640px) {
+  header { flex-wrap: wrap; gap: 8px 16px; padding: 12px 16px; }
+  .diff { grid-template-columns: 1fr; }
+}

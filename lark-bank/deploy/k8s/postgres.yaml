@@ -1,0 +1,80 @@
+# The journal's two databases (bank spec 0008), each a CloudNativePG Cluster: a primary and a synchronous replica,
+# which the operator keeps on different workers and promotes when the primary goes. bank-db-0 is db-0 and also keeps
+# the offsets and read models; bank-db-1 is db-1. scripts/up.sh installs the operator before these are applied.
+#
+# One user for both, bootstrapped from this secret, so the bank keeps one DATABASE_USER and DATABASE_PASSWORD.
+apiVersion: v1
+kind: Secret
+metadata: { name: bank-db-credentials }
+type: kubernetes.io/basic-auth
+stringData: { username: bank, password: bank }
+---
+# A person reading the read models at psql (bank spec 0021): row security on, and `set bank.auditor = on` to see every
+# account. Development values.
+apiVersion: v1
+kind: Secret
+metadata: { name: auditor-ro-credentials }
+type: kubernetes.io/basic-auth
+stringData: { username: auditor_ro, password: auditor }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata: { name: bank-db-0 }
+spec:
+  # Two: a primary and one replica. Three survives losing a replica as well as the primary; it is this one number.
+  instances: 2
+  postgresql:
+    # A commit is on both instances before the bank hears it. `required` blocks writes rather than answer with one
+    # copy, so after a failover they wait until the old primary has come back as the replica.
+    synchronous: { method: any, number: 1, dataDurability: required }
+    parameters: { max_connections: "400", shared_buffers: "512MB" }
+  bootstrap:
+    initdb: { database: bank, owner: bank, secret: { name: bank-db-credentials } }
+  # The read models' readers (bank spec 0021), here alone since the read models are: bank_reader, which the bank
+  # becomes to read a customer's request and so is a member of, and auditor_ro, a person's login. The bank's migration
+  # grants them what they read; it cannot make them, since bank may not create roles.
+  managed:
+    roles:
+      - { name: bank_reader, ensure: present, login: false }
+      - { name: auditor_ro, ensure: present, login: true, passwordSecret: { name: auditor-ro-credentials } }
+      - { name: bank, ensure: present, login: true, inRoles: [ bank_reader ], passwordSecret: { name: bank-db-credentials } }
+      # bank-access's store (spec 0022): a login of its own, owning its database and nothing else.
+      - { name: access, ensure: present, login: true, passwordSecret: { name: access-db-credentials } }
+      # Estate's (bank spec 0026), the same.
+      - { name: estate, ensure: present, login: true, passwordSecret: { name: estate-db-credentials } }
+  storage: { size: 5Gi }
+  resources:
+    requests: { cpu: "1", memory: 1Gi }
+  # Every WAL segment archived to the backup store as it closes (bank spec 0009, deploy/k8s/backups.yaml).
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters: { barmanObjectName: bank-backups }
+  # Scraped by the same Prometheus job as the bank, from each instance's own exporter.
+  inheritedMetadata:
+    annotations: { prometheus.io/scrape: "true", prometheus.io/port: "9187", prometheus.io/path: /metrics }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata: { name: bank-db-1 }
+spec:
+  # Two: a primary and one replica. Three survives losing a replica as well as the primary; it is this one number.
+  instances: 2
+  postgresql:
+    # A commit is on both instances before the bank hears it. `required` blocks writes rather than answer with one
+    # copy, so after a failover they wait until the old primary has come back as the replica.
+    synchronous: { method: any, number: 1, dataDurability: required }
+    parameters: { max_connections: "400", shared_buffers: "512MB" }
+  bootstrap:
+    initdb: { database: bank, owner: bank, secret: { name: bank-db-credentials } }
+  storage: { size: 5Gi }
+  resources:
+    requests: { cpu: "1", memory: 1Gi }
+  # Every WAL segment archived to the backup store as it closes (bank spec 0009, deploy/k8s/backups.yaml).
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters: { barmanObjectName: bank-backups }
+  # Scraped by the same Prometheus job as the bank, from each instance's own exporter.
+  inheritedMetadata:
+    annotations: { prometheus.io/scrape: "true", prometheus.io/port: "9187", prometheus.io/path: /metrics }

@@ -1,0 +1,1583 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "bank-checks",
+    "version" : "0.1.0"
+  },
+  "paths" : {
+    "/decisions" : {
+      "get" : {
+        "operationId" : "decisions",
+        "parameters" : [
+          {
+            "name" : "limit",
+            "in" : "query",
+            "schema" : {
+              "type" : "integer",
+              "format" : "int32"
+            },
+            "allowReserved" : false,
+            "style" : "form"
+          },
+          {
+            "name" : "cookie",
+            "in" : "header",
+            "schema" : {
+              "type" : [
+                "string",
+                "null"
+              ]
+            },
+            "style" : "simple"
+          }
+        ],
+        "responses" : {
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotFound"
+                }
+              }
+            }
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Invalid"
+                }
+              }
+            }
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Unavailable"
+                }
+              }
+            }
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotSignedIn"
+                }
+              }
+            }
+          },
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/DecisionView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/flags" : {
+      "get" : {
+        "operationId" : "flags",
+        "parameters" : [
+          {
+            "name" : "limit",
+            "in" : "query",
+            "schema" : {
+              "type" : "integer",
+              "format" : "int32"
+            },
+            "allowReserved" : false,
+            "style" : "form"
+          },
+          {
+            "name" : "cookie",
+            "in" : "header",
+            "schema" : {
+              "type" : [
+                "string",
+                "null"
+              ]
+            },
+            "style" : "simple"
+          }
+        ],
+        "responses" : {
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotFound"
+                }
+              }
+            }
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Invalid"
+                }
+              }
+            }
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Unavailable"
+                }
+              }
+            }
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotSignedIn"
+                }
+              }
+            }
+          },
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/FlagView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logout" : {
+      "post" : {
+        "operationId" : "signOut",
+        "parameters" : [
+          {
+            "name" : "cookie",
+            "in" : "header",
+            "schema" : {
+              "type" : [
+                "string",
+                "null"
+              ]
+            },
+            "style" : "simple"
+          }
+        ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me" : {
+      "get" : {
+        "operationId" : "me",
+        "parameters" : [
+          {
+            "name" : "cookie",
+            "in" : "header",
+            "schema" : {
+              "type" : [
+                "string",
+                "null"
+              ]
+            },
+            "style" : "simple"
+          }
+        ],
+        "responses" : {
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotFound"
+                }
+              }
+            }
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Invalid"
+                }
+              }
+            }
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Unavailable"
+                }
+              }
+            }
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotSignedIn"
+                }
+              }
+            }
+          },
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Who"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rules" : {
+      "get" : {
+        "operationId" : "rules",
+        "parameters" : [
+          {
+            "name" : "cookie",
+            "in" : "header",
+            "schema" : {
+              "type" : [
+                "string",
+                "null"
+              ]
+            },
+            "style" : "simple"
+          }
+        ],
+        "responses" : {
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotFound"
+                }
+              }
+            }
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Invalid"
+                }
+              }
+            }
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Unavailable"
+                }
+              }
+            }
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotSignedIn"
+                }
+              }
+            }
+          },
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/RuleSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rules/dry-run" : {
+      "post" : {
+        "operationId" : "dryRun",
+        "parameters" : [
+          {
+            "name" : "cookie",
+            "in" : "header",
+            "schema" : {
+              "type" : [
+                "string",
+                "null"
+              ]
+            },
+            "style" : "simple"
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DryRunBody",
+                "description" : ""
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotFound"
+                }
+              }
+            }
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Invalid"
+                }
+              }
+            }
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Unavailable"
+                }
+              }
+            }
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotSignedIn"
+                }
+              }
+            }
+          },
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DryRunResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rules/try" : {
+      "post" : {
+        "operationId" : "tryRule",
+        "parameters" : [
+          {
+            "name" : "cookie",
+            "in" : "header",
+            "schema" : {
+              "type" : [
+                "string",
+                "null"
+              ]
+            },
+            "style" : "simple"
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TryBody",
+                "description" : ""
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotFound"
+                }
+              }
+            }
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Invalid"
+                }
+              }
+            }
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Unavailable"
+                }
+              }
+            }
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotSignedIn"
+                }
+              }
+            }
+          },
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Tried"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rules/validate" : {
+      "post" : {
+        "operationId" : "validate",
+        "parameters" : [
+          {
+            "name" : "cookie",
+            "in" : "header",
+            "schema" : {
+              "type" : [
+                "string",
+                "null"
+              ]
+            },
+            "style" : "simple"
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DraftBody",
+                "description" : ""
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotFound"
+                }
+              }
+            }
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Invalid"
+                }
+              }
+            }
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Unavailable"
+                }
+              }
+            }
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotSignedIn"
+                }
+              }
+            }
+          },
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Checked"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rules/{name}" : {
+      "get" : {
+        "operationId" : "rule",
+        "parameters" : [
+          {
+            "name" : "name",
+            "in" : "path",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            },
+            "style" : "simple"
+          },
+          {
+            "name" : "cookie",
+            "in" : "header",
+            "schema" : {
+              "type" : [
+                "string",
+                "null"
+              ]
+            },
+            "style" : "simple"
+          }
+        ],
+        "responses" : {
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotFound"
+                }
+              }
+            }
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Invalid"
+                }
+              }
+            }
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Unavailable"
+                }
+              }
+            }
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotSignedIn"
+                }
+              }
+            }
+          },
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RuleBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rules/{name}/versions" : {
+      "post" : {
+        "operationId" : "newVersion",
+        "parameters" : [
+          {
+            "name" : "name",
+            "in" : "path",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            },
+            "style" : "simple"
+          },
+          {
+            "name" : "cookie",
+            "in" : "header",
+            "schema" : {
+              "type" : [
+                "string",
+                "null"
+              ]
+            },
+            "style" : "simple"
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/NewVersion",
+                "description" : ""
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotFound"
+                }
+              }
+            }
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Invalid"
+                }
+              }
+            }
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Unavailable"
+                }
+              }
+            }
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotSignedIn"
+                }
+              }
+            }
+          },
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/VersionBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/schema/{record}" : {
+      "get" : {
+        "operationId" : "schema",
+        "parameters" : [
+          {
+            "name" : "record",
+            "in" : "path",
+            "required" : true,
+            "schema" : {
+              "type" : "string"
+            },
+            "style" : "simple"
+          },
+          {
+            "name" : "cookie",
+            "in" : "header",
+            "schema" : {
+              "type" : [
+                "string",
+                "null"
+              ]
+            },
+            "style" : "simple"
+          }
+        ],
+        "responses" : {
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotFound"
+                }
+              }
+            }
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Invalid"
+                }
+              }
+            }
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Unavailable"
+                }
+              }
+            }
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotSignedIn"
+                }
+              }
+            }
+          },
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RecordBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/screen" : {
+      "description" : "Decide, once and for good, whether a proposed transfer may move\n\n",
+      "post" : {
+        "description" : "Decide, once and for good, whether a proposed transfer may move\n\n",
+        "operationId" : "screen",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProposedTransferBody"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DecisionBody"
+                }
+              }
+            }
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Refused"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/screen/test" : {
+      "post" : {
+        "operationId" : "testTransfer",
+        "parameters" : [
+          {
+            "name" : "cookie",
+            "in" : "header",
+            "schema" : {
+              "type" : [
+                "string",
+                "null"
+              ]
+            },
+            "style" : "simple"
+          }
+        ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProposedTransfer",
+                "description" : ""
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "404" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotFound"
+                }
+              }
+            }
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Invalid"
+                }
+              }
+            }
+          },
+          "503" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Unavailable"
+                }
+              }
+            }
+          },
+          "401" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotSignedIn"
+                }
+              }
+            }
+          },
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Tested"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "Amount" : {
+        "type" : "object",
+        "properties" : {
+          "value" : {
+            "type" : "string"
+          },
+          "currency" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "value",
+          "currency"
+        ]
+      },
+      "Checked" : {
+        "type" : "object",
+        "properties" : {
+          "errors" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "words" : {
+            "type" : [
+              "string",
+              "null"
+            ]
+          },
+          "simplest" : {
+            "type" : [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required" : [
+          "errors"
+        ]
+      },
+      "DecisionBody" : {
+        "type" : "object",
+        "properties" : {
+          "outcome" : {
+            "type" : "string"
+          },
+          "rule" : {
+            "type" : [
+              "string",
+              "null"
+            ]
+          },
+          "version" : {
+            "type" : [
+              "integer",
+              "null"
+            ],
+            "format" : "int32"
+          },
+          "evidence" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "outcome",
+          "evidence"
+        ]
+      },
+      "DecisionView" : {
+        "type" : "object",
+        "properties" : {
+          "version" : {
+            "type" : [
+              "integer",
+              "null"
+            ],
+            "format" : "int32"
+          },
+          "transfer" : {
+            "type" : "string"
+          },
+          "evidence" : {
+            "type" : "string"
+          },
+          "outcome" : {
+            "type" : "string"
+          },
+          "rule" : {
+            "type" : [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required" : [
+          "transfer",
+          "outcome",
+          "evidence"
+        ]
+      },
+      "DraftBody" : {
+        "type" : "object",
+        "properties" : {
+          "record" : {
+            "type" : "string"
+          },
+          "document" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "record",
+          "document"
+        ]
+      },
+      "DryRunBody" : {
+        "type" : "object",
+        "properties" : {
+          "record" : {
+            "type" : "string"
+          },
+          "document" : {
+            "type" : "string"
+          },
+          "days" : {
+            "type" : [
+              "integer",
+              "null"
+            ],
+            "format" : "int32"
+          }
+        },
+        "required" : [
+          "record",
+          "document"
+        ]
+      },
+      "DryRunResult" : {
+        "type" : "object",
+        "properties" : {
+          "matched" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "of" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "share" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "examples" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [
+          "matched",
+          "of",
+          "share",
+          "examples"
+        ]
+      },
+      "FieldBody" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "comparisons" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [
+          "name",
+          "type",
+          "comparisons"
+        ]
+      },
+      "FlagView" : {
+        "type" : "object",
+        "properties" : {
+          "rule" : {
+            "type" : "string"
+          },
+          "amount" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "sequence" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "evidence" : {
+            "type" : "string"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "severity" : {
+            "type" : "string"
+          },
+          "account" : {
+            "type" : "string"
+          },
+          "atMillis" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        },
+        "required" : [
+          "account",
+          "sequence",
+          "rule",
+          "version",
+          "severity",
+          "atMillis",
+          "currency",
+          "amount",
+          "evidence"
+        ]
+      },
+      "Invalid" : {
+        "type" : "object",
+        "properties" : {
+          "errors" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        },
+        "required" : [
+          "errors"
+        ]
+      },
+      "Movement" : {
+        "type" : "object",
+        "properties" : {
+          "reference" : {
+            "type" : "string"
+          },
+          "hourOfDay" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "amount" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "account" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "account",
+          "kind",
+          "currency",
+          "amount",
+          "reference",
+          "hourOfDay"
+        ]
+      },
+      "NewVersion" : {
+        "type" : "object",
+        "properties" : {
+          "document" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "record" : {
+            "type" : "string"
+          },
+          "position" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "severity" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "record",
+          "document",
+          "severity",
+          "position",
+          "status"
+        ]
+      },
+      "NotFound" : {
+        "type" : "object",
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "message"
+        ]
+      },
+      "NotSignedIn" : {
+        "type" : "object",
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "message"
+        ]
+      },
+      "ProposedTransfer" : {
+        "type" : "object",
+        "properties" : {
+          "hourOfDay" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "amount" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "to" : {
+            "type" : "string"
+          },
+          "from" : {
+            "type" : "string"
+          },
+          "currency" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "from",
+          "to",
+          "currency",
+          "amount",
+          "hourOfDay"
+        ]
+      },
+      "ProposedTransferBody" : {
+        "type" : "object",
+        "properties" : {
+          "requestedAtMillis" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "amount" : {
+            "$ref" : "#/components/schemas/Amount"
+          },
+          "to" : {
+            "type" : "string"
+          },
+          "transfer" : {
+            "type" : "string"
+          },
+          "from" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "transfer",
+          "from",
+          "to",
+          "amount",
+          "requestedAtMillis"
+        ]
+      },
+      "RecordBody" : {
+        "type" : "object",
+        "properties" : {
+          "record" : {
+            "type" : "string"
+          },
+          "fields" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FieldBody"
+            }
+          }
+        },
+        "required" : [
+          "record",
+          "fields"
+        ]
+      },
+      "Refused" : {
+        "type" : "object",
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "message"
+        ]
+      },
+      "RuleBody" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "record" : {
+            "type" : "string"
+          },
+          "versions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/VersionBody"
+            }
+          }
+        },
+        "required" : [
+          "name",
+          "record",
+          "versions"
+        ]
+      },
+      "RuleSummary" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "live" : {
+            "type" : [
+              "integer",
+              "null"
+            ],
+            "format" : "int32"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "latest" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "record" : {
+            "type" : "string"
+          },
+          "position" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "severity" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "name",
+          "record",
+          "latest",
+          "status",
+          "severity",
+          "position"
+        ]
+      },
+      "RuleWeighed" : {
+        "type" : "object",
+        "properties" : {
+          "rule" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "held" : {
+            "type" : "boolean"
+          },
+          "evidence" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "rule",
+          "version",
+          "held",
+          "evidence"
+        ]
+      },
+      "Tested" : {
+        "type" : "object",
+        "properties" : {
+          "outcome" : {
+            "type" : "string"
+          },
+          "rule" : {
+            "type" : [
+              "string",
+              "null"
+            ]
+          },
+          "version" : {
+            "type" : [
+              "integer",
+              "null"
+            ],
+            "format" : "int32"
+          },
+          "rules" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RuleWeighed"
+            }
+          }
+        },
+        "required" : [
+          "outcome",
+          "rules"
+        ]
+      },
+      "Tried" : {
+        "type" : "object",
+        "properties" : {
+          "held" : {
+            "type" : "boolean"
+          },
+          "evidence" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "held",
+          "evidence"
+        ]
+      },
+      "TryBody" : {
+        "type" : "object",
+        "properties" : {
+          "record" : {
+            "type" : "string"
+          },
+          "document" : {
+            "type" : "string"
+          },
+          "transfer" : {
+            "anyOf" : [
+              {
+                "type" : "null"
+              },
+              {
+                "$ref" : "#/components/schemas/ProposedTransfer"
+              }
+            ]
+          },
+          "movement" : {
+            "anyOf" : [
+              {
+                "type" : "null"
+              },
+              {
+                "$ref" : "#/components/schemas/Movement"
+              }
+            ]
+          }
+        },
+        "required" : [
+          "record",
+          "document"
+        ]
+      },
+      "Unavailable" : {
+        "type" : "object",
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "message"
+        ]
+      },
+      "VersionBody" : {
+        "type" : "object",
+        "properties" : {
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "author" : {
+            "type" : "string"
+          },
+          "request" : {
+            "type" : [
+              "string",
+              "null"
+            ],
+            "description" : "If not set, this field defaults to the value of the default annotation.",
+            "default" : null
+          },
+          "document" : {
+            "type" : "string"
+          },
+          "approvalNote" : {
+            "type" : [
+              "string",
+              "null"
+            ],
+            "description" : "If not set, this field defaults to the value of the default annotation.",
+            "default" : null
+          },
+          "approval" : {
+            "type" : "string",
+            "description" : "If not set, this field defaults to the value of the default annotation.",
+            "default" : "not-needed"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "words" : {
+            "type" : "string"
+          },
+          "atMillis" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "position" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "severity" : {
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "number",
+          "status",
+          "severity",
+          "position",
+          "author",
+          "atMillis",
+          "words",
+          "document"
+        ]
+      },
+      "Who" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "approvalsPages" : {
+            "type" : [
+              "string",
+              "null"
+            ],
+            "description" : "If not set, this field defaults to the value of the default annotation.",
+            "default" : null
+          }
+        },
+        "required" : [
+          "name"
+        ]
+      }
+    }
+  }
+}

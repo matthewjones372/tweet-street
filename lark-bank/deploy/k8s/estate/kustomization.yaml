@@ -1,0 +1,22 @@
+# Estate (bank spec 0026), from github.com/matthewjones372/estate's deploy/ and deploy/cluster/, copied here so the
+# bank's deploy files are all in this repository: two runners of one cluster, its settings and the bank's catalog in
+# the `estate` ConfigMap, its database on bank-db-0, and debug for the three services' logging ConfigMaps only.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - serviceaccount.yaml
+  - rbac.yaml
+  - deployment.yaml
+  - service.yaml
+  - database.yaml
+components:
+  - cluster
+patches:
+  - path: runner.yaml
+configMapGenerator:
+  - name: estate
+    files: [ estate.yaml, catalog.yaml ]
+images:
+  - name: estate
+    newName: ghcr.io/matthewjones372/estate
+    newTag: main

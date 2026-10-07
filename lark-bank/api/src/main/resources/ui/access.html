@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Access · Lark Bank</title>
+  <link rel="stylesheet" href="bank.css">
+</head>
+<body>
+<header>
+  <strong>Lark Bank</strong>
+  <nav>
+    <a href="./">Accounts</a>
+    <a href="transfer.html">Transfer</a>
+    <a href="payroll.html">Payroll</a>
+    <a href="ops.html">Ops</a>
+    <a href="access.html" aria-current="page">Access</a>
+    <a href="/api-docs">API</a>
+  </nav>
+</header>
+<main>
+  <section>
+    <h1>Who can see what</h1>
+    <p class="muted">From the relationships bank-access holds today, each with what wrote it: the event that opened an
+      account, or the approval a grant came from. A grant that has expired is not here.</p>
+    <form id="ask-account">
+      <label>Account <input id="account" name="account" required></label>
+      <button type="submit">Who can see it</button>
+    </form>
+    <form id="ask-person">
+      <label>Person <input id="person" name="person" required></label>
+      <button type="submit">What can they see</button>
+    </form>
+    <p id="answer" class="message" hidden></p>
+  </section>
+
+  <section id="viewers-section" hidden>
+    <h2 id="viewers-title"></h2>
+    <table id="viewers">
+      <thead><tr><th>Person</th><th>As</th><th>Because</th><th>Since</th><th>Until</th><th>Approval</th><th>Event</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section id="sees-section" hidden>
+    <h2 id="sees-title"></h2>
+    <table id="sees">
+      <thead><tr><th>Account</th><th>As</th><th>Because</th><th>Since</th><th>Until</th><th>Approval</th><th>Event</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</main>
+<script type="module">
+  import { $, accountViewers, personSees, refusal, show } from "./bank.js";
+
+  const when = (millis) => (millis == null ? "" : new Date(millis).toLocaleString());
+
+  /** One row per reason, every cell set as text: nothing bank-access holds is read as markup. */
+  function rows(table, reasons, first, key) {
+    const body = table.querySelector("tbody");
+    body.replaceChildren();
+    for (const reason of reasons) {
+      const row = document.createElement("tr");
+      row.dataset[key] = reason[key] ?? "*";
+      for (const cell of [first(reason), reason.relation, reason.says, when(reason.sinceMillis), when(reason.untilMillis),
+        reason.approval ?? "", reason.event ?? ""]) {
+        const td = document.createElement("td");
+        td.textContent = cell;
+        row.append(td);
+      }
+      body.append(row);
+    }
+  }
+
+  async function account(id) {
+    $("#account").value = id;
+    const result = await accountViewers(id);
+    if (!result.ok) return show($("#answer"), refusal(result), "bad");
+    show($("#answer"), result.body.length ? "" : `Nobody can see ${id}`, "");
+    $("#viewers-title").textContent = `Who can see ${id}`;
+    rows($("#viewers"), result.body, (reason) => reason.person, "person");
+    $("#viewers-section").hidden = false;
+  }
+
+  async function person(subject) {
+    $("#person").value = subject;
+    const result = await personSees(subject);
+    if (!result.ok) return show($("#answer"), refusal(result), "bad");
+    const none = $("#sees-none");
+    none?.remove();
+    if (!result.body.length) {
+      const nothing = document.createElement("p");
+      nothing.id = "sees-none";
+      nothing.className = "muted";
+      nothing.textContent = `${subject} can see no account`;
+      $("#sees-section").append(nothing);
+    }
+    $("#sees-title").textContent = `What ${subject} can see`;
+    rows($("#sees"), result.body, (reason) => reason.account ?? "every account", "account");
+    $("#sees-section").hidden = false;
+  }
+
+  // The question is in the address, so an answer can be linked to and asked again.
+  for (const [form, name] of [["#ask-account", "account"], ["#ask-person", "person"]]) {
+    $(form).addEventListener("submit", (event) => {
+      event.preventDefault();
+      location.search = `?${name}=${encodeURIComponent($(`#${name}`).value.trim())}`;
+    });
+  }
+  const asked = new URLSearchParams(location.search);
+  if (asked.get("account")) account(asked.get("account"));
+  if (asked.get("person")) person(asked.get("person"));
+</script>
+</body>
+</html>

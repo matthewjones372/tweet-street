@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: estate
+  labels: { app.kubernetes.io/name: estate }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: estate }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: estate }
+    spec:
+      serviceAccountName: estate
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: estate
+          image: estate
+          ports:
+            - { name: http, containerPort: 8080 }
+            - { name: metrics, containerPort: 9464 }
+          envFrom:
+            - secretRef: { name: estate, optional: true }
+          volumeMounts:
+            - { name: settings, mountPath: /etc/estate, readOnly: true }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 20
+          resources:
+            requests: { cpu: 20m, memory: 96Mi }
+            limits: { memory: 256Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+      volumes:
+        - name: settings
+          configMap: { name: estate }

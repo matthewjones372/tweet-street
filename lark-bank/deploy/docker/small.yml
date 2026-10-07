@@ -1,0 +1,36 @@
+# The bank at the size of a small board (bank spec 0010): each node held to one CPU and 768 MiB, one journal database,
+# no Kafka. An override of compose.yml, for finding what such a node carries:
+#   docker compose -f deploy/docker/compose.yml -f deploy/docker/small.yml up -d --wait
+#   scripts/small-docker.sh
+x-small-bank: &small-bank
+  deploy: { resources: { limits: { cpus: "1", memory: 768m } } }
+
+x-small-env: &small-env
+  JOURNAL_DATABASES: ""
+  KAFKA_ENABLED: "false"
+  DATABASE_POOL_SIZE: "16"
+
+services:
+  postgres:
+    command: [ postgres, -c, max_connections=100, -c, shared_buffers=128MB ]
+    deploy: { resources: { limits: { cpus: "1", memory: 1g } } }
+
+  # Not started: the one database keeps the whole journal, and nothing is published.
+  postgres-2: { profiles: [ full ] }
+  kafka: { profiles: [ full ] }
+  apicurio-db: { profiles: [ full ] }
+  apicurio: { profiles: [ full ] }
+
+  bank-1:
+    <<: *small-bank
+    environment: { <<: *small-env }
+    depends_on: !reset
+      postgres: { condition: service_healthy }
+
+  bank-2:
+    <<: *small-bank
+    environment: { <<: *small-env }
+
+  bank-3:
+    <<: *small-bank
+    environment: { <<: *small-env }

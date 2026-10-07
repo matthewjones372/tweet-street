@@ -1,0 +1,130 @@
+# Backups of the journal's two databases (bank spec 0009): every WAL segment archived as it closes, and a base backup
+# each night, both to an S3 bucket through CloudNativePG's Barman Cloud plugin, so either database can be restored to
+# any moment since its oldest base backup. The bucket is Garage's (bank spec 0010), on a volume of its own: on kind a
+# local one. scripts/operators.sh installs the plugin.
+#
+# Development values: the home cluster takes its secrets from SOPS. Garage's keys have a shape: GK and 24 hex digits,
+# and a secret of 64.
+apiVersion: v1
+kind: Secret
+metadata: { name: backup-store-credentials }
+type: Opaque
+stringData: { ACCESS_KEY_ID: GK0123456789abcdef01234567, ACCESS_SECRET_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef }
+---
+apiVersion: v1
+kind: Secret
+metadata: { name: garage }
+type: Opaque
+stringData:
+  GARAGE_RPC_SECRET: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+  GARAGE_ADMIN_TOKEN: development-admin-token
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: garage }
+spec:
+  accessModes: [ ReadWriteOnce ]
+  resources: { requests: { storage: 20Gi } }
+---
+# One node, one volume. Its node key is kept on the volume, so wherever it restarts it is the same node, and the
+# layout its setup gave it still holds.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: garage }
+spec:
+  serviceName: garage
+  replicas: 1
+  selector: { matchLabels: { app: garage } }
+  template:
+    metadata: { labels: { app: garage } }
+    spec:
+      containers:
+        - name: garage
+          image: dxflrs/garage:v1.1.0
+          envFrom: [ { secretRef: { name: garage } } ]
+          ports:
+            - { containerPort: 3900, name: s3 }
+            - { containerPort: 3903, name: admin }
+          readinessProbe: { httpGet: { path: /health, port: admin } }
+          volumeMounts:
+            - { name: config, mountPath: /etc/garage.toml, subPath: garage.toml }
+            - { name: data, mountPath: /var/lib/garage }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+      volumes:
+        - { name: config, configMap: { name: garage } }
+        - { name: data, persistentVolumeClaim: { claimName: garage } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: garage }
+spec:
+  selector: { app: garage }
+  ports:
+    - { port: 3900, targetPort: s3, name: s3 }
+    - { port: 3903, targetPort: admin, name: admin }
+---
+# Garage's layout, the backups' key and the bucket, made once through its admin API; run again, it changes nothing.
+apiVersion: batch/v1
+kind: Job
+metadata: { name: garage-setup }
+spec:
+  backoffLimit: 20
+  template:
+    metadata: { labels: { app: garage-setup } }
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: curlimages/curl:8.15.0
+          command: [ sh, /setup/setup.sh ]
+          env:
+            - { name: GARAGE_ADMIN, value: "http://garage:3903" }
+            - { name: GARAGE_ADMIN_TOKEN, valueFrom: { secretKeyRef: { name: garage, key: GARAGE_ADMIN_TOKEN } } }
+          envFrom:
+            - { secretRef: { name: backup-store-credentials } }
+            - { secretRef: { name: traces-store } }
+            - { secretRef: { name: logs-store } }
+          volumeMounts: [ { name: setup, mountPath: /setup } ]
+      volumes: [ { name: setup, configMap: { name: garage } } ]
+---
+# One store for both databases: each writes under its own cluster name, so their backups never mix.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata: { name: bank-backups }
+spec:
+  # Base backups, and the WAL needed to reach any moment after the oldest of them, kept for two weeks.
+  retentionPolicy: "14d"
+  configuration:
+    destinationPath: s3://bank-backups/
+    endpointURL: http://garage:3900
+    s3Credentials:
+      accessKeyId: { name: backup-store-credentials, key: ACCESS_KEY_ID }
+      secretAccessKey: { name: backup-store-credentials, key: ACCESS_SECRET_KEY }
+    wal: { compression: gzip }
+    data: { compression: gzip }
+---
+# A base backup of each database every night at 02:17, and one as soon as the schedule is created, so a new cluster
+# can be restored from its first hour.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata: { name: bank-db-0-nightly }
+spec:
+  schedule: "0 17 2 * * *"
+  immediate: true
+  backupOwnerReference: self
+  cluster: { name: bank-db-0 }
+  method: plugin
+  pluginConfiguration: { name: barman-cloud.cloudnative-pg.io }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata: { name: bank-db-1-nightly }
+spec:
+  schedule: "0 17 2 * * *"
+  immediate: true
+  backupOwnerReference: self
+  cluster: { name: bank-db-1 }
+  method: plugin
+  pluginConfiguration: { name: barman-cloud.cloudnative-pg.io }

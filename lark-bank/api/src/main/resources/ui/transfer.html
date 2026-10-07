@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Transfer · Lark Bank</title>
+  <link rel="stylesheet" href="bank.css">
+</head>
+<body>
+<header>
+  <strong>Lark Bank</strong>
+  <nav>
+    <a href="./">Accounts</a>
+    <a href="transfer.html" aria-current="page">Transfer</a>
+    <a href="payroll.html">Payroll</a>
+    <a href="ops.html">Ops</a>
+    <a href="/api-docs">API</a>
+  </nav>
+</header>
+<main>
+  <section>
+    <h2>Move money between two accounts</h2>
+    <form id="transfer">
+      <label>From <input name="from" required autocomplete="off"></label>
+      <label>To <input name="to" required autocomplete="off"></label>
+      <label>Amount <input name="amount" inputmode="decimal" placeholder="25.00" required></label>
+      <button>Transfer</button>
+      <button type="button" class="quiet" id="again" hidden>Send again</button>
+      <button type="button" class="quiet" id="another" hidden>New transfer</button>
+    </form>
+    <p class="muted">Transfer id <code id="transfer-id"></code>. Sending it again shows the same transfer rather than
+      making a second.</p>
+    <p id="result" class="message" hidden></p>
+    <ol class="steps" id="steps"></ol>
+  </section>
+</main>
+<script type="module">
+  import * as bank from "./bank.js";
+  const { $, money, decimal, refusal, retryable, show } = bank;
+  await bank.currencies();
+
+  const settled = new Set(["Completed", "Rejected", "Refunded"]);
+  const meaning = {
+    Pending: "requested: the source is being debited",
+    Debited: "debited from the source: the destination is being credited",
+    Completed: "credited to the destination: done",
+    Rejected: "the source refused the debit: nothing moved",
+    Refunding: "the destination refused the credit: the source is being refunded",
+    Refunded: "refunded to the source: nothing moved in the end",
+  };
+
+  let id = bank.reference("t");
+  let sent = null;
+  $("#transfer-id").textContent = id;
+
+  function seen(view) {
+    const steps = $("#steps");
+    if (steps.lastElementChild?.dataset.status !== view.status) {
+      const step = document.createElement("li");
+      step.dataset.status = view.status;
+      step.textContent = `${view.status}: ${meaning[view.status] ?? ""}`;
+      steps.append(step);
+    }
+    const done = settled.has(view.status);
+    const reason = view.reason ? `: ${view.reason}` : "";
+    show($("#result"), `${money(view.amount, { trim: true })} from ${view.from} to ${view.to}, ${view.status}${reason}`,
+      !done ? "wait" : view.status === "Completed" ? "good" : "bad");
+    return done;
+  }
+
+  async function follow() {
+    for (;;) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const answer = await bank.transferStatus(id);
+      if (answer.ok && seen(answer.body)) break;
+    }
+    $("#another").hidden = false;
+  }
+
+  async function send(transfer) {
+    sent = transfer;
+    $("#again").hidden = true;
+    show($("#result"), "Sending…", "wait");
+    const answer = await bank.transfer(id, transfer.from, transfer.to, transfer.amount);
+    if (answer.ok) {
+      if (!seen(answer.body)) await follow();
+      else $("#another").hidden = false;
+    } else if (retryable(answer)) {
+      show($("#result"), `${refusal(answer)}. Send again uses transfer id ${id}, so it is still one transfer.`, "wait");
+      $("#again").hidden = false;
+    } else {
+      show($("#result"), refusal(answer), "bad");
+    }
+  }
+
+  $("#transfer").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    const value = decimal(form.get("amount"));
+    if (value === null) return show($("#result"), "An amount is a number like 25.00", "bad");
+    // The amount is in the source account's currency; a destination in another refuses it (bank spec 0011).
+    const from = form.get("from").trim();
+    const source = await bank.account(from);
+    if (!source.ok) return show($("#result"), refusal(source), retryable(source) ? "wait" : "bad");
+    send({ from, to: form.get("to").trim(), amount: { value, currency: source.body.balance.currency } });
+  });
+  $("#again").addEventListener("click", () => sent && send(sent));
+  $("#another").addEventListener("click", () => {
+    id = bank.reference("t");
+    $("#transfer-id").textContent = id;
+    $("#steps").replaceChildren();
+    show($("#result"), "");
+    $("#transfer").reset();
+    $("#another").hidden = true;
+  });
+</script>
+</body>
+</html>

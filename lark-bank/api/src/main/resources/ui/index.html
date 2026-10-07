@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lark Bank</title>
+  <link rel="stylesheet" href="bank.css">
+</head>
+<body>
+<header>
+  <strong>Lark Bank</strong>
+  <nav>
+    <a href="./" aria-current="page">Accounts</a>
+    <a href="transfer.html">Transfer</a>
+    <a href="payroll.html">Payroll</a>
+    <a href="ops.html">Ops</a>
+    <a href="/api-docs">API</a>
+  </nav>
+</header>
+<main>
+  <section>
+    <h2>Your accounts</h2>
+    <ul id="mine"></ul>
+    <p id="none" class="muted" hidden>You have no accounts yet.</p>
+  </section>
+
+  <section>
+    <h2>Find an account</h2>
+    <form id="find">
+      <label>Account id <input name="id" required autocomplete="off"></label>
+      <button>Open the account page</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Open an account</h2>
+    <form id="open">
+      <label>Account id <input name="id" required autocomplete="off"></label>
+      <label>Currency <select name="currency" id="currency"></select></label>
+      <label>Opening balance <input name="initial" value="100.00" inputmode="decimal" required></label>
+      <button>Open</button>
+    </form>
+    <p id="opened" class="message" hidden></p>
+    <p class="muted">Yours, as whoever is signed in. Opening the same id again is a retry, and answers the account as it is.</p>
+  </section>
+
+  <section id="act-as-section" hidden>
+    <h2>Act as a customer</h2>
+    <form id="act-as">
+      <label>Customer <input name="subject" required autocomplete="off"></label>
+      <button>See what they see</button>
+    </form>
+    <p id="act-as-result" class="message" hidden></p>
+    <p class="muted">Only with a grant someone else approved in Approvals, until it ends, and read-only.</p>
+  </section>
+</main>
+<script type="module">
+  import { $, actAs, currencies, decimal, myAccounts, open, refusal, show, whoAmI } from "./bank.js";
+
+  // Support acts as a customer from here (bank spec 0021); nobody else is offered it.
+  const who = await whoAmI();
+  $("#act-as-section").hidden = !(who.ok && who.body.groups.includes("support") && !who.body.actor);
+  $("#act-as").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const result = await actAs(new FormData(event.target).get("subject").trim());
+    if (result.ok) location.href = "/";
+    else show($("#act-as-result"), refusal(result), "bad");
+  });
+
+  const mine = await myAccounts();
+  for (const held of mine.ok ? mine.body : []) {
+    const item = document.createElement("li");
+    const link = document.createElement("a");
+    link.href = `account.html?id=${encodeURIComponent(held.id)}`;
+    link.textContent = `${held.id}: ${held.balance.value} ${held.balance.currency}`;
+    item.append(link);
+    $("#mine").append(item);
+  }
+  $("#none").hidden = !mine.ok || mine.body.length > 0;
+
+  for (const currency of await currencies()) {
+    $("#currency").append(new Option(`${currency.code} (${currency.symbol})`, currency.code, false, currency.code === "GBP"));
+  }
+
+  const goTo = (id) => { location.href = `account.html?id=${encodeURIComponent(id)}`; };
+
+  $("#find").addEventListener("submit", (event) => {
+    event.preventDefault();
+    goTo(new FormData(event.target).get("id").trim());
+  });
+
+  $("#open").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    const initial = decimal(form.get("initial"));
+    if (initial === null) return show($("#opened"), "An opening balance is an amount like 100.00", "bad");
+    const id = form.get("id").trim();
+    const result = await open(id, form.get("currency"), initial);
+    if (result.ok) goTo(id);
+    else show($("#opened"), refusal(result), "bad");
+  });
+</script>
+</body>
+</html>

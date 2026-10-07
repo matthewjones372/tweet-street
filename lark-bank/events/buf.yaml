@@ -1,0 +1,8 @@
+# What buf breaking holds the schemas to (bank spec 0015): WIRE_JSON, so a record written by any earlier version
+# still decodes, in binary and in JSON. Renaming is allowed; removing a field without reserving its number,
+# renumbering and retyping are not.
+version: v2
+modules:
+  - path: src/main/proto
+breaking:
+  use: [ WIRE_JSON ]

@@ -1,0 +1,82 @@
+# Tempo (bank spec 0024): every service's spans, over OTLP/HTTP, one trace per request. One pod running every part of
+# Tempo, its blocks in Garage's `traces` bucket, on network storage with the backups, kept seven days. Grafana reads it.
+apiVersion: v1
+kind: Secret
+metadata: { name: traces-store }
+type: Opaque
+# Development values; SOPS supplies the real ones at home (spec 0017). Garage's key ids are GK and 24 hex digits.
+stringData: { TRACES_KEY_ID: GK89abcdef0123456789abcdef, TRACES_SECRET_KEY: 89abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567 }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: tempo }
+data:
+  tempo.yaml: |
+    server: { http_listen_port: 3200, log_format: json }
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            http: { endpoint: "0.0.0.0:4318" }
+            # OpenFGA exports over gRPC alone.
+            grpc: { endpoint: "0.0.0.0:4317" }
+    storage:
+      trace:
+        backend: s3
+        s3:
+          endpoint: garage:3900
+          bucket: traces
+          region: garage
+          insecure: true
+          forcepathstyle: true
+          access_key: ${TRACES_KEY_ID}
+          secret_key: ${TRACES_SECRET_KEY}
+        wal: { path: /var/tempo/wal }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: tempo }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: tempo } }
+  template:
+    metadata: { labels: { app: tempo } }
+    spec:
+      containers:
+        - name: tempo
+          image: grafana/tempo:3.1.0
+          # Seven days (spec 0024), kept by Tempo 3's backend worker and scheduler, which each read their own setting.
+          args:
+            - -config.file=/etc/tempo/tempo.yaml
+            - -config.expand-env=true
+            - -target=all
+            - -backend-worker.compaction.block-retention=168h
+            - -backend-scheduler.provider.work.compaction.block-retention=168h
+          envFrom: [ { secretRef: { name: traces-store } } ]
+          ports:
+            - { containerPort: 3200, name: http }
+            - { containerPort: 4318, name: otlp }
+            - { containerPort: 4317, name: otlp-grpc }
+          readinessProbe: { httpGet: { path: /ready, port: http }, periodSeconds: 10 }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 512Mi }
+          volumeMounts:
+            - { name: config, mountPath: /etc/tempo }
+            - { name: wal, mountPath: /var/tempo }
+      volumes:
+        - { name: config, configMap: { name: tempo } }
+        # What is not yet a block in Garage: a restart loses at most the last few seconds' spans, which is a trace's
+        # whole point of being sampled.
+        - { name: wal, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: tempo }
+spec:
+  selector: { app: tempo }
+  ports:
+    - { name: http, port: 3200, targetPort: http }
+    - { name: otlp, port: 4318, targetPort: otlp }
+    - { name: otlp-grpc, port: 4317, targetPort: otlp-grpc }

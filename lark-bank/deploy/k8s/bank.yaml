@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: lark-bank
+spec:
+  serviceName: lark-bank-nodes
+  replicas: 3
+  # One after another: the first pod forms the cluster and migrates the schema, and each next one joins it.
+  podManagementPolicy: OrderedReady
+  selector: { matchLabels: { app: lark-bank } }
+  template:
+    metadata:
+      labels: { app: lark-bank }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics
+    spec:
+      serviceAccountName: lark-bank
+      # Past the cluster's leaveWithin (30 s): a stopping pod drains its producer and hands its shards over first.
+      terminationGracePeriodSeconds: 45
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector: { matchLabels: { app: lark-bank } }
+      containers:
+        - name: bank
+          image: lark-bank:dev
+          imagePullPolicy: Never
+          env:
+            - { name: HOST, value: 0.0.0.0 }
+            - { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
+            # The address this node binds and the one it tells the others: the pod's IP, exactly as the API lists it.
+            - { name: POD_IP, valueFrom: { fieldRef: { fieldPath: status.podIP } } }
+            - { name: CLUSTER_JOIN, value: kubernetes }
+            # Each database's primary, through the Service CloudNativePG moves to the new primary on a failover
+            # (bank spec 0008). bank-db-0 is db-0 and keeps the read models. Append to the list, never reorder it.
+            - { name: DATABASE_URL, value: "jdbc:postgresql://bank-db-0-rw:5432/bank" }
+            - { name: JOURNAL_DATABASES, value: "db-1=jdbc:postgresql://bank-db-1-rw:5432/bank" }
+            - { name: DATABASE_USER, valueFrom: { secretKeyRef: { name: bank-db-credentials, key: username } } }
+            - { name: DATABASE_PASSWORD, valueFrom: { secretKeyRef: { name: bank-db-credentials, key: password } } }
+            - { name: DATABASE_POOL_SIZE, value: "48" }
+            - { name: KAFKA_ENABLED, value: "true" }
+            - { name: KAFKA_BOOTSTRAP, value: "kafka:9092" }
+            - { name: KAFKA_USERNAME, value: bank }
+            - { name: KAFKA_PASSWORD, valueFrom: { secretKeyRef: { name: kafka-users, key: bank } } }
+            - { name: APICURIO_URL, value: "http://apicurio:8080/apis/registry/v3" }
+            # Each transfer screened by the checks before it debits (bank spec 0018); unanswered in 300 ms, approved.
+            - { name: SCREENING_ENABLED, value: "true" }
+            - { name: SCREENING_URL, value: "http://checks:8090" }
+            # Who is calling (bank spec 0021): the test issuer on kind, Pocket ID at home (the overlay says which).
+            - { name: IDENTITY_ISSUER, value: "http://issuer:9000" }
+            - { name: IDENTITY_CALLBACK_URL, value: "http://localhost:8080/callback" }
+            - { name: IDENTITY_SESSION_KEY, valueFrom: { secretKeyRef: { name: bank-identity, key: sessionKey } } }
+            # Support's grants, approved in Approvals (bank spec 0021); a token from the test issuer, as a service.
+            - { name: ACCESS_ENABLED, value: "true" }
+            - { name: APPROVALS_URL, value: "http://bank-approvals:8070" }
+            - { name: APPROVALS_TOKEN_URL, value: "http://issuer:9000/token" }
+            - { name: APPROVALS_TOKEN_FORM, value: "grant_type=urn:lark-bank:test-token&subject=bank&groups=services&audience=bank-approvals" }
+            # bank-access asked alongside the bank's own rules, and disagreements counted (bank spec 0022's shadow).
+            - { name: ACCESS_SHADOW_ENABLED, value: "true" }
+            - { name: FGA_API_URL, value: "http://bank-access:8080" }
+            # Spans to Tempo (bank spec 0024), one request in ten: what trace-cost measured as within the noise.
+            - { name: TELEMETRY_ENABLED, value: "true" }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://tempo:4318" }
+            - { name: TELEMETRY_SAMPLED, value: "0.1" }
+            - { name: FGA_API_TOKEN, valueFrom: { secretKeyRef: { name: access-keys, key: bank } } }
+            # Its level, reread every ten seconds from lark-bank-logging, which Estate's debug switch patches (spec 0026).
+            - { name: LOG_LEVEL_FILE, value: /etc/lark-bank/logging/level }
+          volumeMounts:
+            - { name: logging, mountPath: /etc/lark-bank/logging, readOnly: true }
+          ports:
+            - { containerPort: 8080, name: http }
+            - { containerPort: 25520, name: remoting }
+          readinessProbe:
+            httpGet: { path: /ready, port: http }
+            periodSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 90
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "1", memory: 1Gi }
+            limits: { memory: 2Gi }
+      volumes:
+        - name: logging
+          configMap: { name: lark-bank-logging }
+---
+# The bank's log level (bank spec 0026): INFO, turned to DEBUG for a while by Estate's debug switch, which turns it back.
+# Flux makes it once and leaves it, so a reconcile never undoes a switch.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lark-bank-logging
+  annotations: { kustomize.toolkit.fluxcd.io/ssa: IfNotPresent }
+data:
+  level: INFO
+---
+# What the load and a browser reach: every ready pod, and from the host through kind's port mapping.
+apiVersion: v1
+kind: Service
+metadata:
+  name: lark-bank
+spec:
+  type: NodePort
+  selector: { app: lark-bank }
+  ports: [ { port: 8080, targetPort: http, nodePort: 30080, name: http } ]
+---
+# The StatefulSet's own names, one per pod, published before a pod is ready so the logs name who is who.
+apiVersion: v1
+kind: Service
+metadata:
+  name: lark-bank-nodes
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector: { app: lark-bank }
+  ports: [ { port: 25520, targetPort: remoting, name: remoting } ]

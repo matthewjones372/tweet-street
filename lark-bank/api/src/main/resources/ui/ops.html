@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ops · Lark Bank</title>
+  <link rel="stylesheet" href="bank.css">
+  <style>
+    main { max-width: 1200px; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+    .nodes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+    .node { border: 1px solid var(--line); border-left: 6px solid var(--good); border-radius: 8px; padding: 10px 12px; }
+    .node[data-status="Joining"], .node[data-status="Leaving"] { border-left-color: var(--warn); }
+    .node[data-status="Down"], .node[data-status="Removed"] { border-left-color: var(--bad); }
+    .node[data-stale="true"] { opacity: 0.45; border-left-color: #9aa1ad; }
+    .node h3 { margin: 0 0 4px; font-size: 15px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .badge { font-size: 11px; font-weight: 500; padding: 1px 6px; border-radius: 10px; background: var(--wash); color: var(--muted); }
+    dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 6px 0 0; font-size: 13px; }
+    dt { color: var(--muted); }
+    dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+    .banner { padding: 10px 14px; border-radius: 8px; background: var(--bad); color: white; font-weight: 600; }
+    .sides { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-variant-numeric: tabular-nums; }
+    .side { background: var(--wash); border-radius: 6px; padding: 8px 10px; }
+    .side strong { display: block; font-size: 20px; }
+    svg { width: 100%; height: 90px; display: block; }
+    .bar { display: grid; grid-template-columns: 160px 1fr 80px; gap: 8px; align-items: center; font-size: 13px; }
+    .bar span.track { background: var(--wash); border-radius: 4px; height: 12px; overflow: hidden; }
+    .bar span.fill { display: block; height: 100%; background: var(--accent); }
+    #connection[data-kind="bad"] { position: sticky; top: 0; }
+  </style>
+</head>
+<body>
+<header>
+  <strong>Lark Bank</strong>
+  <nav>
+    <a href="./">Accounts</a>
+    <a href="transfer.html">Transfer</a>
+    <a href="payroll.html">Payroll</a>
+    <a href="ops.html" aria-current="page">Ops</a>
+    <a href="access.html">Access</a>
+    <a href="/api-docs">API</a>
+  </nav>
+  <span class="muted" id="served"></span>
+</header>
+<main>
+  <p id="connection" class="message" data-kind="wait">Connecting to the stream…</p>
+  <p id="unbalanced" class="banner" hidden></p>
+
+  <section>
+    <h2>Nodes</h2>
+    <div class="nodes" id="nodes"></div>
+  </section>
+
+  <div class="grid">
+    <section>
+      <h2>Ledger <span class="badge" id="ledger-state">…</span></h2>
+      <table id="books">
+        <thead><tr><th>Currency</th><th class="amount">Balances + in flight</th><th class="amount">Paid in − paid out</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="muted">Each currency balances on its own; none nets against another. Below, how many are out of
+        balance over the last five minutes: money in flight makes it move while transfers run, and at rest it is zero.</p>
+      <svg id="gap" viewBox="0 0 300 90" preserveAspectRatio="none" role="img" aria-label="Currencies out of balance"></svg>
+    </section>
+
+    <section>
+      <h2>Flow</h2>
+      <div id="flow"></div>
+      <p class="muted">Transfers per second, from the change in the transfer counts; commands per second, summed over
+        every node.</p>
+      <svg id="rate" viewBox="0 0 300 90" preserveAspectRatio="none" role="img" aria-label="Transfers per second"></svg>
+    </section>
+
+    <section>
+      <h2>Journal</h2>
+      <table id="journal">
+        <thead><tr><th>Database</th><th class="amount">Newest</th><th class="amount">Behind, by read model</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
+</main>
+<script type="module">
+  import { $, currencies, money, show } from "./bank.js";
+  await currencies();
+
+  const STALE_MILLIS = 3000;
+  const WINDOW = 300; // five minutes of one-second frames
+  const gaps = [];
+  const rates = [];
+  let previous = null;
+
+  const text = (tag, content, attributes = {}) => {
+    const element = document.createElement(tag);
+    element.textContent = content;
+    for (const [name, value] of Object.entries(attributes)) element.setAttribute(name, value);
+    return element;
+  };
+
+  function line(svg, values, colour) {
+    const max = Math.max(1, ...values.map(Math.abs));
+    const zero = 45;
+    const points = values.map((value, i) => `${(i / (WINDOW - 1)) * 300},${zero - (value / max) * 40}`).join(" ");
+    svg.innerHTML =
+      `<line x1="0" y1="${zero}" x2="300" y2="${zero}" stroke="#d9dde5" stroke-width="1"/>` +
+      `<polyline points="${points}" fill="none" stroke="${colour}" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
+  }
+
+  function nodes(snapshot) {
+    const cards = snapshot.nodes.map((node) => {
+      const card = document.createElement("article");
+      card.className = "node";
+      card.dataset.node = node.node;
+      card.dataset.status = node.status;
+      card.dataset.stale = String(node.ageMillis > STALE_MILLIS);
+      const title = document.createElement("h3");
+      title.append(node.node, text("span", node.ageMillis > STALE_MILLIS ? `silent ${Math.round(node.ageMillis / 1000)} s` : node.status, { class: "badge" }));
+      if (snapshot.leader?.startsWith(`${node.node}@`)) title.append(text("span", "leader", { class: "badge" }));
+      if (snapshot.readModelsOn === node.node) title.append(text("span", "sweeper", { class: "badge" }));
+      if (snapshot.servedBy === node.node) title.append(text("span", "serving this page", { class: "badge" }));
+      const facts = document.createElement("dl");
+      const add = (name, value) => facts.append(text("dt", name), text("dd", value));
+      add("account shards", node.shards.account ?? 0);
+      add("transfer shards", node.shards.transfer ?? 0);
+      add("entities", (node.entities.account ?? 0) + (node.entities.transfer ?? 0));
+      add("asks / s", node.asksPerSecond.toFixed(0));
+      add("ask p99", `${node.askP99Millis.toFixed(0)} ms`);
+      card.append(title, facts);
+      return card;
+    });
+    $("#nodes").replaceChildren(...cards);
+  }
+
+  // Exact sums of the bank's decimal strings, in BigInt minor units: a float would drift.
+  const places = (value) => (value.split(".")[1] ?? "").length;
+  const minorOf = (value, at) => BigInt(value.replace(".", "").padEnd(value.replace(".", "").length + at - places(value), "0"));
+  function decimalOf(minor, at) {
+    const negative = minor < 0n;
+    const digits = (negative ? -minor : minor).toString().padStart(at + 1, "0");
+    const value = at === 0 ? digits : `${digits.slice(0, -at)}.${digits.slice(-at)}`;
+    return negative ? `-${value}` : value;
+  }
+
+  function ledger(snapshot, transfersPerSecond) {
+    const { conserved, currencies } = snapshot.ledger;
+    $("#books tbody").replaceChildren(...currencies.map((books) => {
+      const at = places(books.balances);
+      const held = decimalOf(minorOf(books.balances, at) + minorOf(books.inFlight, at), at);
+      const owed = decimalOf(minorOf(books.paidIn, at) - minorOf(books.paidOut, at), at);
+      const row = document.createElement("tr");
+      row.append(text("td", books.currency),
+        text("td", money({ value: held, currency: books.currency }), { class: "amount" }),
+        text("td", money({ value: owed, currency: books.currency }), { class: "amount" }),
+        text("td", books.conserved ? "balanced" : "settling", { class: "badge" }));
+      return row;
+    }));
+
+    const unbalanced = currencies.filter((books) => !books.conserved);
+    gaps.push(unbalanced.length);
+    if (gaps.length > WINDOW) gaps.shift();
+    line($("#gap"), gaps, conserved ? "#1f7a4d" : "#b3261e");
+    // Only at rest is a gap a fault: while money moves, the read models trail the journal by a moment.
+    const atRest = transfersPerSecond === 0 && snapshot.transfers.pending === 0;
+    $("#ledger-state").textContent = conserved ? "Balanced" : atRest ? "Not balanced" : "Settling";
+    const banner = $("#unbalanced");
+    banner.hidden = conserved || !atRest;
+    banner.textContent = `The ledger does not balance at rest in ${unbalanced.map((books) => books.currency).join(", ")}`;
+  }
+
+  function flow(snapshot) {
+    const seconds = previous ? Math.max(0.001, (snapshot.atMillis - previous.atMillis) / 1000) : 1;
+    const settled = (counts) => counts.completed + counts.rejected + counts.refunded;
+    const perSecond = (outcome) => previous ? Math.max(0, (snapshot.transfers[outcome] - previous.transfers[outcome]) / seconds) : 0;
+    const transfers = { completed: perSecond("completed"), rejected: perSecond("rejected"), refunded: perSecond("refunded") };
+    const total = previous ? Math.max(0, (settled(snapshot.transfers) - settled(previous.transfers)) / seconds) : 0;
+    const commands = {};
+    for (const node of snapshot.nodes) {
+      if (node.ageMillis > STALE_MILLIS) continue;
+      for (const [outcome, rate] of Object.entries(node.commandsPerSecond)) commands[outcome] = (commands[outcome] ?? 0) + rate;
+    }
+    const rows = [
+      ...Object.entries(transfers).map(([outcome, rate]) => [`transfers ${outcome}`, rate]),
+      ["transfers pending", snapshot.transfers.pending, "now"],
+      ...Object.entries(commands).sort().map(([outcome, rate]) => [`commands ${outcome}`, rate]),
+    ];
+    const top = Math.max(1, ...rows.map(([, value]) => value));
+    $("#flow").replaceChildren(...rows.map(([name, value, unit]) => {
+      const bar = document.createElement("div");
+      bar.className = "bar";
+      const track = text("span", "", { class: "track" });
+      track.append(text("span", "", { class: "fill", style: `width: ${(value / top) * 100}%` }));
+      bar.append(text("span", name), track, text("span", `${value.toFixed(0)} ${unit ?? "/ s"}`, { style: "text-align: right" }));
+      return bar;
+    }));
+    rates.push(total);
+    if (rates.length > WINDOW) rates.shift();
+    line($("#rate"), rates, "#2f5bd3");
+    return total;
+  }
+
+  function journal(snapshot) {
+    $("#journal tbody").replaceChildren(...snapshot.journal.map((database) => {
+      const row = document.createElement("tr");
+      const behind = Object.entries(database.lag).map(([reader, lag]) => `${reader} ${lag}`).join(" · ");
+      row.append(text("td", database.database), text("td", database.head, { class: "amount" }), text("td", behind, { class: "amount" }));
+      return row;
+    }));
+  }
+
+  const stream = new EventSource("/ops/stream");
+  stream.addEventListener("snapshot", (event) => {
+    const snapshot = JSON.parse(event.data);
+    show($("#connection"), "");
+    $("#served").textContent = `served by ${snapshot.servedBy}`;
+    nodes(snapshot);
+    const transfersPerSecond = flow(snapshot);
+    ledger(snapshot, transfersPerSecond);
+    journal(snapshot);
+    previous = snapshot;
+  });
+  // The browser reconnects by itself, through whichever node the address reaches now.
+  stream.addEventListener("error", () => show($("#connection"), "Lost the stream: reconnecting…", "bad"));
+</script>
+</body>
+</html>

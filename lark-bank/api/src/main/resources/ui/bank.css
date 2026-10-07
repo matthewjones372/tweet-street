@@ -1,0 +1,96 @@
+:root {
+  --ink: #1d2433;
+  --muted: #5b6475;
+  --line: #d9dde5;
+  --paper: #ffffff;
+  --wash: #f4f6f9;
+  --accent: #2f5bd3;
+  --good: #1f7a4d;
+  --bad: #b3261e;
+  --warn: #8a5a00;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--wash);
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  padding: 14px 24px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+
+header strong { font-size: 17px; }
+header nav { display: flex; gap: 16px; }
+header a { color: var(--muted); text-decoration: none; }
+header a[aria-current="page"] { color: var(--accent); font-weight: 600; }
+header .who { margin-left: auto; color: var(--muted); }
+
+main { max-width: 960px; margin: 24px auto; padding: 0 16px; display: grid; gap: 16px; }
+
+section {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+h1 { font-size: 22px; margin: 0; }
+h2 { font-size: 16px; margin: 0 0 12px; }
+
+form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+input, textarea {
+  font: inherit;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-width: 140px;
+}
+textarea { width: 100%; min-height: 140px; font-family: ui-monospace, monospace; }
+
+button {
+  font: inherit;
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+button.quiet { background: var(--paper); color: var(--accent); }
+
+.balance { font-size: 32px; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); font-size: 13px; }
+code { font-family: ui-monospace, monospace; font-size: 13px; }
+
+.message { padding: 8px 12px; border-radius: 6px; margin-top: 10px; }
+.message[data-kind="good"] { background: #e6f4ec; color: var(--good); }
+.message[data-kind="bad"] { background: #fbe9e7; color: var(--bad); }
+.message[data-kind="wait"] { background: #fff4db; color: var(--warn); }
+
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 500; font-size: 13px; }
+td.amount, th.amount { text-align: right; }
+
+ol.steps { margin: 8px 0 0; padding-left: 20px; }
+
+/* Someone in support acting as a customer (bank spec 0021): impossible to miss, on every page. */
+#acting {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  background: #7a2e00;
+  color: #fff;
+  font-weight: 600;
+}
+#acting button { margin-left: 0.5rem; }

@@ -1,0 +1,14 @@
+# Tempo for compose (bank spec 0024): the cluster's, with its blocks on a local volume rather than in Garage.
+server: { http_listen_port: 3200, log_format: json }
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http: { endpoint: "0.0.0.0:4318" }
+        # OpenFGA exports over gRPC alone.
+        grpc: { endpoint: "0.0.0.0:4317" }
+storage:
+  trace:
+    backend: local
+    local: { path: /var/tempo/blocks }
+    wal: { path: /var/tempo/wal }

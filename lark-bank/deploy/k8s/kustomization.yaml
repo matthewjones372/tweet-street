@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: lark-bank
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - backups.yaml
+  - kafka.yaml
+  - apicurio.yaml
+  - checks.yaml
+  - approvals.yaml
+  - access.yaml
+  - rbac.yaml
+  - issuer.yaml
+  - bank.yaml
+  - monitoring.yaml
+  - alertmanager.yaml
+  - tempo.yaml
+  - loki.yaml
+  - fluent-bit.yaml
+  - headlamp.yaml
+  - estate
+configMapGenerator:
+  - name: grafana-dashboards
+    files: [ grafana/lark-bank.json ]
+  - name: garage
+    files: [ garage/garage.toml, garage/setup.sh ]
+  - name: kafka-setup
+    files: [ kafka/setup.sh ]
+generatorOptions:
+  disableNameSuffixHash: true

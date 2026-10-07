@@ -1,0 +1,27 @@
+# Who approves what, and when nobody need look (lark-bank spec 0019). Changed by pull request, shipped by Flux; each
+# request records the version it was decided under. A kind not listed needs two approvers from admins.
+- kind: checks.rule-version
+  approvers: [ risk ]
+  needed: 2
+  expiresAfter: 7d
+  autoApprove:
+    # A low rule switched off lets a little more through.
+    - when: { change: switch-off, severity: low }
+    # The name or severity changed, not what it declines.
+    - when: { change: describe-only }
+- kind: checks.rule-off
+  approvers: [ risk, ops ]
+  needed: 1
+- kind: bank.account-limit
+  approvers: [ ops ]
+  needed: 1
+  autoApprove:
+    # Lowering a limit only stops more.
+    - when: { direction: lower }
+# Support seeing one customer's account, or acting as them read-only, for a while (lark-bank spec 0021): someone else
+# in support or ops agrees within the hour. The bank checks what is asked (by the person who will hold it, for 30
+# minutes unless it says, and at most four hours) before it gives it.
+- kind: bank.access-grant
+  approvers: [ support, ops ]
+  needed: 1
+  expiresAfter: 1h

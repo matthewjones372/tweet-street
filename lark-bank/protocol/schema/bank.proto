@@ -1,0 +1,375 @@
+syntax = "proto2";
+
+package bank.v1;
+
+// serial name 'bank.protocol.wire.AccountEvent.Opened'
+message Opened {
+  required string owner = 1;
+  required Money initial = 2;
+  required string reference = 3;
+  required int64 atMillis = 4;
+}
+
+// serial name 'bank.protocol.wire.AccountEvent.Deposited'
+message Deposited {
+  required Money amount = 1;
+  required string reference = 2;
+  required int64 atMillis = 3;
+}
+
+// serial name 'bank.protocol.wire.AccountEvent.Withdrawn'
+message Withdrawn {
+  required Money amount = 1;
+  required string reference = 2;
+  required int64 atMillis = 3;
+}
+
+// serial name 'bank.protocol.wire.AccountEvent.Debited'
+message Debited {
+  required string transfer = 1;
+  required Money amount = 2;
+  required int64 atMillis = 3;
+}
+
+// serial name 'bank.protocol.wire.AccountEvent.Credited'
+message Credited {
+  required string transfer = 1;
+  required Money amount = 2;
+  required int64 atMillis = 3;
+}
+
+// serial name 'bank.protocol.wire.AccountEvent.Refunded'
+message Refunded {
+  required string transfer = 1;
+  required Money amount = 2;
+  required int64 atMillis = 3;
+}
+
+// serial name 'bank.protocol.wire.AccountEvent.LegsClosed'
+message LegsClosed {
+  required string transfer = 1;
+  required int64 atMillis = 2;
+}
+
+message UnopenedAccount {
+}
+
+message OpenAccount {
+  required string owner = 1;
+  required Money balance = 2;
+  repeated string recent = 3;
+  repeated string legs = 4;
+}
+
+// serial name 'bank.protocol.wire.AccountCommand.Open'
+message Open {
+  required string owner = 1;
+  required Money initial = 2;
+  required string reference = 3;
+}
+
+// serial name 'bank.protocol.wire.AccountCommand.Deposit'
+message Deposit {
+  required Money amount = 1;
+  required string reference = 2;
+}
+
+// serial name 'bank.protocol.wire.AccountCommand.Withdraw'
+message Withdraw {
+  required Money amount = 1;
+  required string reference = 2;
+}
+
+// serial name 'bank.protocol.wire.AccountCommand.Debit'
+message Debit {
+  required string transfer = 1;
+  required Money amount = 2;
+}
+
+// serial name 'bank.protocol.wire.AccountCommand.Credit'
+message Credit {
+  required string transfer = 1;
+  required Money amount = 2;
+}
+
+// serial name 'bank.protocol.wire.AccountCommand.Refund'
+message Refund {
+  required string transfer = 1;
+  required Money amount = 2;
+}
+
+// serial name 'bank.protocol.wire.GetBalance'
+message GetBalance {
+}
+
+message CloseLegs {
+  required string transfer = 1;
+}
+
+// serial name 'bank.protocol.wire.Balance'
+message Balance {
+  required string id = 1;
+  required string owner = 2;
+  required Money balance = 3;
+}
+
+// serial name 'bank.protocol.wire.AccountError.NoSuchAccount'
+message NoSuchAccount {
+  required string id = 1;
+}
+
+// serial name 'bank.protocol.wire.AccountError.AlreadyOpen'
+message AlreadyOpen {
+  required string id = 1;
+}
+
+// serial name 'bank.protocol.wire.AccountError.InsufficientFunds'
+message InsufficientFunds {
+  required string id = 1;
+  required Money balance = 2;
+  required Money requested = 3;
+}
+
+// serial name 'bank.protocol.wire.AccountError.InvalidAmount'
+message InvalidAmount {
+  required Money amount = 1;
+}
+
+message AccountUnavailable {
+  required string message = 1;
+}
+
+// serial name 'bank.protocol.wire.AccountError.CurrencyMismatch'
+message CurrencyMismatch {
+  required string id = 1;
+  required string account = 2;
+  required string given = 3;
+}
+
+// serial name 'bank.protocol.wire.BulkCredit'
+message BulkCredit {
+  required Money amount = 1;
+  required string reference = 2;
+}
+
+// serial name 'bank.protocol.wire.TransferEvent.Requested'
+message Requested {
+  required string from = 1;
+  required string to = 2;
+  required Money amount = 3;
+  required int64 atMillis = 4;
+}
+
+// serial name 'bank.protocol.wire.TransferEvent.SourceDebited'
+message SourceDebited {
+  required int64 atMillis = 1;
+}
+
+message TransferRejected {
+  required string reason = 1;
+  required int64 atMillis = 2;
+}
+
+// serial name 'bank.protocol.wire.TransferEvent.DestinationCredited'
+message DestinationCredited {
+  required int64 atMillis = 1;
+}
+
+// serial name 'bank.protocol.wire.TransferEvent.CreditRefused'
+message CreditRefused {
+  required string reason = 1;
+  required int64 atMillis = 2;
+}
+
+// serial name 'bank.protocol.wire.TransferEvent.SourceRefunded'
+message SourceRefunded {
+  required int64 atMillis = 1;
+}
+
+// serial name 'bank.protocol.wire.TransferEvent.Screened'
+message Screened {
+  required ScreeningOutcome outcome = 1;
+  optional string rule = 2;
+  optional int32 version = 3;
+  required string evidence = 4;
+  required bool answered = 5;
+  required int64 atMillis = 6;
+}
+
+message StartTransfer {
+  required string from = 1;
+  required string to = 2;
+  required Money amount = 3;
+}
+
+message GetTransfer {
+}
+
+// serial name 'bank.protocol.wire.TransferView'
+message TransferView {
+  required string id = 1;
+  required string from = 2;
+  required string to = 3;
+  required Money amount = 4;
+  required TransferStatus status = 5;
+  optional string reason = 6;
+}
+
+// serial name 'bank.protocol.wire.TransferError.SameAccount'
+message SameAccount {
+  required string id = 1;
+}
+
+// serial name 'bank.protocol.wire.TransferError.InvalidTransferAmount'
+message InvalidTransferAmount {
+  required Money amount = 1;
+}
+
+// serial name 'bank.protocol.wire.TransferError.NoSuchTransfer'
+message NoSuchTransfer {
+  required string id = 1;
+}
+
+// serial name 'bank.protocol.wire.TransferError.TransferIdReused'
+message TransferIdReused {
+  required string id = 1;
+}
+
+message TransferUnavailable {
+  required string message = 1;
+}
+
+// serial name 'bank.protocol.wire.NodeSnapshot'
+message NodeSnapshot {
+  required string node = 1;
+  required string status = 2;
+  required int64 atMillis = 3;
+  map<string, int64> shards = 4;
+  map<string, int64> entities = 5;
+  required double asksPerSecond = 6;
+  required double askP99Millis = 7;
+  map<string, double> commandsPerSecond = 8;
+}
+
+// serial name 'bank.protocol.wire.Money'
+message Money {
+  required string amount = 1;
+  required Currency currency = 2;
+}
+
+// serial name 'bank.protocol.wire.ScreeningOutcome'
+enum ScreeningOutcome {
+  SCREENING_APPROVED = 0;
+  SCREENING_DECLINED = 1;
+}
+
+// serial name 'bank.protocol.wire.TransferStatus'
+enum TransferStatus {
+  STATUS_PENDING = 0;
+  STATUS_DEBITED = 1;
+  STATUS_COMPLETED = 2;
+  STATUS_REJECTED = 3;
+  STATUS_REFUNDING = 4;
+  STATUS_REFUNDED = 5;
+}
+
+// serial name 'bank.protocol.wire.Currency'
+message Currency {
+  required string code = 1;
+  required int32 exponent = 2;
+}
+
+// How lark writes this table (spec 0093): one of these, its field number the class's tag.
+message AccountEvent {
+  oneof value {
+    Opened opened = 1;
+    Deposited deposited = 2;
+    Withdrawn withdrawn = 3;
+    Debited debited = 4;
+    Credited credited = 5;
+    Refunded refunded = 6;
+    LegsClosed legs_closed = 7;
+  }
+}
+
+// How lark writes this table (spec 0093): one of these, its field number the class's tag.
+message AccountSnapshot {
+  oneof value {
+    UnopenedAccount unopened_account = 1;
+    OpenAccount open_account = 2;
+  }
+}
+
+// How lark writes this table (spec 0093): one of these, its field number the class's tag.
+message AccountRequest {
+  oneof value {
+    Open open = 1;
+    Deposit deposit = 2;
+    Withdraw withdraw = 3;
+    Debit debit = 4;
+    Credit credit = 5;
+    Refund refund = 6;
+    GetBalance get_balance = 7;
+    CloseLegs close_legs = 8;
+  }
+}
+
+// How lark writes this table (spec 0093): one of these, its field number the class's tag.
+message AccountReply {
+  oneof value {
+    Balance balance = 1;
+    NoSuchAccount no_such_account = 2;
+    AlreadyOpen already_open = 3;
+    InsufficientFunds insufficient_funds = 4;
+    InvalidAmount invalid_amount = 5;
+    AccountUnavailable account_unavailable = 6;
+    CurrencyMismatch currency_mismatch = 7;
+  }
+}
+
+// How lark writes this table (spec 0093): one of these, its field number the class's tag.
+message BulkCreditSent {
+  oneof value {
+    BulkCredit bulk_credit = 1;
+  }
+}
+
+// How lark writes this table (spec 0093): one of these, its field number the class's tag.
+message TransferEvent {
+  oneof value {
+    Requested requested = 1;
+    SourceDebited source_debited = 2;
+    TransferRejected transfer_rejected = 3;
+    DestinationCredited destination_credited = 4;
+    CreditRefused credit_refused = 5;
+    SourceRefunded source_refunded = 6;
+    Screened screened = 7;
+  }
+}
+
+// How lark writes this table (spec 0093): one of these, its field number the class's tag.
+message TransferRequest {
+  oneof value {
+    StartTransfer start_transfer = 1;
+    GetTransfer get_transfer = 2;
+  }
+}
+
+// How lark writes this table (spec 0093): one of these, its field number the class's tag.
+message TransferReply {
+  oneof value {
+    TransferView transfer_view = 1;
+    SameAccount same_account = 2;
+    InvalidTransferAmount invalid_transfer_amount = 3;
+    NoSuchTransfer no_such_transfer = 4;
+    TransferIdReused transfer_id_reused = 5;
+    TransferUnavailable transfer_unavailable = 6;
+  }
+}
+
+// How lark writes this table (spec 0093): one of these, its field number the class's tag.
+message NodeSnapshotOnTopic {
+  oneof value {
+    NodeSnapshot node_snapshot = 1;
+  }
+}

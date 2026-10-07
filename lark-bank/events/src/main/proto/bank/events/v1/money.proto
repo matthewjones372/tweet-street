@@ -1,0 +1,17 @@
+// The bank's events as a contract (bank spec 0015). Only ever added to: new fields and new oneof cases on new
+// numbers; nothing removed, renumbered or retyped; a field no longer written is reserved.
+syntax = "proto3";
+
+package bank.events.v1;
+
+option java_multiple_files = true;
+option java_package = "bank.events.v1";
+
+// An amount in one currency.
+message Money {
+  // ISO 4217, or the bank's own code for a currency ISO does not list (BTC, ETH).
+  string currency = 1;
+  // A decimal, plain and at the currency's own scale: "10.50", "150000", "0.00012000". Read it with
+  // new BigDecimal(amount) in Java or BigDecimal(amount) in Scala; it is exact, and keeps its scale.
+  string amount = 2;
+}

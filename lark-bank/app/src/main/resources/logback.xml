@@ -1,0 +1,31 @@
+<configuration>
+  <!-- One JSON object per line (bank spec 0023), the estate's field names: what Fluent Bit ships and Loki reads. Lark's
+       annotations and each library's MDC are fields of their own. LOG_FORMAT=plain is the old line, for a terminal. -->
+  <appender name="json" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSS'Z'</timestampPattern>
+      <timeZone>UTC</timeZone>
+      <fieldNames>
+        <timestamp>ts</timestamp>
+        <message>msg</message>
+        <logger>logger</logger>
+        <thread>thread</thread>
+        <stackTrace>error</stackTrace>
+        <version>[ignore]</version>
+        <levelValue>[ignore]</levelValue>
+      </fieldNames>
+      <customFields>{"service":"lark-bank","node":"${POD_NAME:-${HOSTNAME}}"}</customFields>
+    </encoder>
+  </appender>
+  <appender name="plain" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder><pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{20} %msg %X%n</pattern></encoder>
+  </appender>
+  <!-- lark's own lines and the bank's, at INFO; everything underneath only when it has something to say. -->
+  <logger name="lark" level="INFO"/>
+  <logger name="org.apache.kafka" level="WARN"/>
+  <logger name="org.apache.pekko" level="WARN"/>
+  <logger name="io.fabric8" level="WARN"/>
+  <logger name="liquibase" level="WARN"/>
+  <logger name="com.zaxxer" level="WARN"/>
+  <root level="INFO"><appender-ref ref="${LOG_FORMAT:-json}"/></root>
+</configuration>

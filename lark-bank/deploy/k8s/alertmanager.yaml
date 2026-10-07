@@ -1,0 +1,49 @@
+# Alertmanager (bank spec 0026): where Prometheus sends what fires, so a silence set on Estate's page has somewhere to
+# live, with who set it and why. It tells no one yet: who it pages is a later spec. Its silences are kept on a small
+# volume, so a restart forgets none.
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: alertmanager }
+data:
+  alertmanager.yml: |
+    route: { receiver: nobody, group_by: [ alertname ] }
+    receivers: [ { name: nobody } ]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: alertmanager }
+spec:
+  serviceName: alertmanager
+  replicas: 1
+  selector: { matchLabels: { app: alertmanager } }
+  template:
+    metadata:
+      labels: { app: alertmanager }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "9093", prometheus.io/path: /metrics }
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 65534, fsGroup: 65534, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.28.1
+          args: [ --config.file=/etc/alertmanager/alertmanager.yml, --storage.path=/alertmanager, --data.retention=720h ]
+          ports: [ { containerPort: 9093, name: http } ]
+          readinessProbe: { httpGet: { path: /-/ready, port: http }, periodSeconds: 5 }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ ALL ] } }
+          volumeMounts:
+            - { name: config, mountPath: /etc/alertmanager }
+            - { name: silences, mountPath: /alertmanager }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 64Mi }
+      volumes:
+        - { name: config, configMap: { name: alertmanager } }
+  volumeClaimTemplates:
+    - metadata: { name: silences }
+      spec: { accessModes: [ ReadWriteOnce ], resources: { requests: { storage: 128Mi } } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: alertmanager }
+spec:
+  selector: { app: alertmanager }
+  ports: [ { port: 9093, targetPort: http, name: http } ]

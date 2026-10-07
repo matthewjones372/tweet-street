@@ -1,0 +1,24 @@
+# Estate's notes, impacts, alert history and threads, and where its two runners find each other: a database of its
+# own on bank-db-0, owned by its own login (made in postgres.yaml's managed roles).
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata: { name: estate }
+spec:
+  cluster: { name: bank-db-0 }
+  name: estate
+  owner: estate
+---
+# Development values; home's come from SOPS.
+apiVersion: v1
+kind: Secret
+metadata: { name: estate-db-credentials }
+type: kubernetes.io/basic-auth
+stringData: { username: estate, password: estate-development-password }
+---
+# What estate.yaml reads with ${NAME}: the session key, and the client secret the test issuer does not check.
+apiVersion: v1
+kind: Secret
+metadata: { name: estate }
+stringData:
+  SESSION_SECRET: a-development-session-secret-for-estate-on-kind
+  CLIENT_SECRET: development

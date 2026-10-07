@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+// The checks' flags (bank spec 0018): one per account event a live monitoring rule held on, keyed by account on
+// checks.flags. Written by zio-schema from checks.monitoring.domain.Flag, whose field numbers these are. Fields are
+// only ever added, on new numbers; buf breaking and the registry's FULL_TRANSITIVE hold it to that.
+package checks.flags.v1;
+
+option java_multiple_files = true;
+option java_package = "checks.flags.v1";
+
+message Flag {
+  string account = 1;
+  int64 sequence = 2;     // the flagged event's place in the account: (account, sequence, rule, version) is unique
+  string rule = 3;
+  int32 version = 4;
+  string severity = 5;    // low, medium or high
+  int64 at_millis = 6;
+  string currency = 7;
+  string amount = 8;      // a plain decimal, as the bank's Money.amount
+  string evidence = 9;
+}

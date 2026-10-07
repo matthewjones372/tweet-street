@@ -1,0 +1,46 @@
+# Apicurio, which holds the schemas of the events the bank publishes (bank spec 0015): the bank registers them at
+# start, each held to FULL_TRANSITIVE, and consumers fetch a record's schema by the id it carries. It keeps them in
+# Postgres, as a database of its own on bank-db-0, the read models' cluster, so it is replicated and backed up with it.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata: { name: apicurio }
+spec:
+  cluster: { name: bank-db-0 }
+  name: apicurio
+  owner: bank
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apicurio
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: apicurio } }
+  template:
+    metadata: { labels: { app: apicurio } }
+    spec:
+      containers:
+        - name: apicurio
+          image: quay.io/apicurio/apicurio-registry:3.3.3
+          env:
+            - { name: APICURIO_STORAGE_KIND, value: sql }
+            - { name: APICURIO_STORAGE_SQL_KIND, value: postgresql }
+            - { name: APICURIO_DATASOURCE_URL, value: "jdbc:postgresql://bank-db-0-rw:5432/apicurio" }
+            - { name: APICURIO_DATASOURCE_USERNAME, valueFrom: { secretKeyRef: { name: bank-db-credentials, key: username } } }
+            - { name: APICURIO_DATASOURCE_PASSWORD, valueFrom: { secretKeyRef: { name: bank-db-credentials, key: password } } }
+          ports: [ { containerPort: 8080, name: http } ]
+          readinessProbe:
+            httpGet: { path: /apis/registry/v3/system/info, port: http }
+            periodSeconds: 5
+          # 223 MiB idle, measured in Docker.
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apicurio
+spec:
+  selector: { app: apicurio }
+  ports: [ { port: 8080, targetPort: http } ]

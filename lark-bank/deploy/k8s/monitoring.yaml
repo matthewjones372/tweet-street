@@ -1,0 +1,344 @@
+# Prometheus finds every pod annotated for scraping; Grafana reads it and opens on the bank's board.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prometheus
+rules:
+  - { apiGroups: [ "" ], resources: [ pods ], verbs: [ get, list, watch ] }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus
+subjects: [ { kind: ServiceAccount, name: prometheus } ]
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: prometheus }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 2s
+      evaluation_interval: 2s
+    # The bank's rules, and any an overlay adds in the optional prometheus-extra ConfigMap (spec 0010's drill).
+    rule_files: [ /etc/prometheus/alerts.yml, /etc/prometheus-extra/*.yml ]
+    # What fires goes to Alertmanager, where Estate's page silences it (bank spec 0026).
+    alerting:
+      alertmanagers: [ { static_configs: [ { targets: [ "alertmanager:9093" ] } ] } ]
+    scrape_configs:
+      - job_name: lark-bank
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces: { names: [ lark-bank ] }
+        relabel_configs:
+          - source_labels: [ __meta_kubernetes_pod_annotation_prometheus_io_scrape ]
+            action: keep
+            regex: "true"
+          - source_labels: [ __meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port ]
+            target_label: __address__
+            separator: ":"
+          - source_labels: [ __meta_kubernetes_pod_annotation_prometheus_io_path ]
+            target_label: __metrics_path__
+          - source_labels: [ __meta_kubernetes_pod_name ]
+            target_label: pod
+          # Which journal database a CloudNativePG instance belongs to; empty on the bank's own pods.
+          - source_labels: [ __meta_kubernetes_pod_label_cnpg_io_cluster ]
+            target_label: database
+          # Which service a pod is, for alerts about one (bank-access's, spec 0022).
+          - source_labels: [ __meta_kubernetes_pod_label_app ]
+            target_label: app
+  # What pages someone (bank spec 0009). Each names what it means and where docs/runbook.md says to look first.
+  alerts.yml: |
+    groups:
+      - name: lark-bank
+        rules:
+          - alert: LedgerDoesNotBalance
+            # At rest each currency's books balance exactly; in flight they are only behind by money moving.
+            expr: max by (currency) (abs(bank_ledger_gap)) > 0 and on() max(bank_transfers_pending) == 0
+            for: 5m
+            labels: { severity: critical }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="lark-bank", level=~"(?i)warn|error"}'
+              summary: "The {{ $labels.currency }} ledger is {{ $value }} {{ $labels.currency }} out with no transfer moving"
+              runbook: docs/runbook.md#the-ledger-does-not-balance
+          - alert: JournalUnwritten
+            expr: sum(increase(lark_delivery_unwritten_total[5m])) > 0
+            labels: { severity: critical }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="lark-bank", level=~"(?i)warn|error"}'
+              summary: "Commands were refused because a journal database could not be written"
+              runbook: docs/runbook.md#a-journal-database-is-down
+          - alert: BankUnavailable
+            expr: |
+              sum(rate(http_server_requests_total{status="503"}[5m]))
+                / sum(rate(http_server_requests_total{path!~"/ready|/health|/metrics|/ops/stream"}[5m])) > 0.05
+            for: 5m
+            labels: { severity: critical }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="lark-bank", level=~"(?i)warn|error"}'
+              summary: "More than 5% of requests answer 503"
+              runbook: docs/runbook.md#the-bank-answers-503
+          - alert: ClusterMemberUnreachable
+            expr: max(lark_cluster_unreachable) > 0
+            for: 1m
+            labels: { severity: warning }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="lark-bank", level=~"(?i)warn|error"}'
+              summary: "A member has been unreachable for a minute; nobody moves on until it is back or downed"
+              runbook: docs/runbook.md#a-node-is-unreachable
+          - alert: ClusterBelowSize
+            expr: max(lark_cluster_members{status="Up"}) < 3
+            for: 5m
+            labels: { severity: warning }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="lark-bank", level=~"(?i)warn|error"}'
+              summary: "Only {{ $value }} of 3 nodes are Up"
+              runbook: docs/runbook.md#a-node-is-unreachable
+          - alert: NodeDowned
+            expr: sum(increase(lark_cluster_downed_total[10m])) > 0
+            labels: { severity: info }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="lark-bank", level=~"(?i)warn|error"}'
+              summary: "A node was downed and restarted as a new life"
+          - alert: ReadModelBehind
+            expr: max by (database, reader) (bank_journal_lag) > 10000
+            for: 5m
+            labels: { severity: warning }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="lark-bank", level=~"(?i)warn|error"}'
+              summary: "{{ $labels.reader }} is {{ $value }} events behind {{ $labels.database }}"
+              runbook: docs/runbook.md#a-read-model-is-behind
+          - alert: AskLatencyHigh
+            expr: histogram_quantile(0.99, sum by (le) (rate(bank_ask_duration_bucket[5m]))) > 500
+            for: 10m
+            labels: { severity: warning }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="lark-bank", level=~"(?i)warn|error"}'
+              summary: "p99 of an entity's answer is {{ $value }} ms"
+          # Bank spec 0022: bank-access answers every check, and fails closed, so its being down refuses everyone.
+          - alert: AccessDown
+            expr: sum(up{app="bank-access"}) < 2 or absent(up{app="bank-access"})
+            for: 2m
+            labels: { severity: critical }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app=~"bank-access|access-sync"}'
+              summary: "{{ $value }} of bank-access's two replicas answer; with none, every check is refused"
+              runbook: docs/runbook.md#bank-access-is-down-or-slow
+          - alert: AccessCheckSlow
+            expr: |
+              histogram_quantile(0.99, sum by (le) (rate(openfga_request_duration_ms_bucket{grpc_method="check"}[5m]))) > 50
+            for: 10m
+            labels: { severity: warning }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="bank-access"}'
+              summary: "p99 of a check is {{ $value }} ms, over the 50 ms each request gives it"
+              runbook: docs/runbook.md#bank-access-is-down-or-slow
+          # Bank spec 0022's shadow: bank-access answered a question differently from the bank's own rules, twice.
+          - alert: AccessDisagreed
+            expr: sum by (asked) (increase(bank_access_disagreed_total[10m])) > 0
+            labels: { severity: warning }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="lark-bank", level=~"(?i)warn|error"}'
+              summary: "bank-access disagreed with the bank {{ $value }} times on {{ $labels.asked }} in ten minutes"
+              runbook: docs/runbook.md#bank-access-disagrees-with-the-bank
+          # Bank spec 0021: a look by staff, or a refusal, that the access log could not keep.
+          - alert: LookUnrecorded
+            expr: sum(increase(bank_access_unrecorded_total[10m])) > 0
+            labels: { severity: critical }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="lark-bank", level=~"(?i)warn|error"}'
+              summary: "{{ $value }} looks by staff or refusals went unrecorded in the last ten minutes"
+              runbook: docs/runbook.md#a-look-went-unrecorded
+          # Bank spec 0018: the checks. Screening slower than half the bank's 300 ms, the consumer falling behind, and
+          # any transfer the bank approved because screening did not answer.
+          - alert: ScreeningSlow
+            expr: histogram_quantile(0.99, sum by (le) (rate(checks_screening_duration_ms_bucket[5m]))) > 150
+            for: 5m
+            labels: { severity: warning }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="checks", level=~"(?i)warn|error"}'
+              summary: "p99 of screening is {{ $value }} ms, past half the bank's timeout"
+              runbook: docs/runbook.md#screening-is-slow-or-unanswered
+          - alert: MonitoringBehind
+            expr: deriv(checks_monitoring_consumer_lag[10m]) > 0 and checks_monitoring_consumer_lag > 1000
+            for: 10m
+            labels: { severity: warning }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="checks", level=~"(?i)warn|error"}'
+              summary: "monitoring is {{ $value }} events behind bank.account-events, and falling further"
+              runbook: docs/runbook.md#screening-is-slow-or-unanswered
+          - alert: TransfersScreenedUnanswered
+            expr: sum(increase(bank_transfer_screened_unanswered_total[5m])) > 0
+            labels: { severity: warning }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="lark-bank", level=~"(?i)warn|error"}'
+              summary: "{{ $value }} transfers went unscreened in five minutes: the bank's policy decided them"
+              runbook: docs/runbook.md#screening-is-slow-or-unanswered
+          - alert: MailboxesFull
+            expr: sum(increase(lark_actor_dead_letters_total{reason="full"}[5m])) > 0
+            labels: { severity: warning }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="lark-bank", level=~"(?i)warn|error"}'
+              summary: "Messages were dropped because an entity could not keep up (lark spec 0095)"
+          - alert: WalArchivingStalled
+            expr: max by (database) (cnpg_pg_stat_archiver_seconds_since_last_archival) > 900
+            for: 15m
+            labels: { severity: critical }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", pod=~"bank-db-.*"} |~ "(?i)archiv|barman"'
+              summary: "{{ $labels.database }} has archived no WAL for 15 minutes: point-in-time recovery is falling behind"
+              runbook: docs/runbook.md#backups
+          # Bank spec 0023: the log store down, and lines no longer arriving while something ships them.
+          - alert: LokiDown
+            expr: max(up{app="loki"}) < 1 or absent(up{app="loki"})
+            for: 5m
+            labels: { severity: warning }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="fluent-bit"}'
+              summary: "Loki has not answered Prometheus for five minutes: new lines wait in the shippers' buffers"
+              runbook: docs/runbook.md#lines-are-not-arriving
+          - alert: LogsNotArriving
+            expr: sum(rate(loki_distributor_lines_received_total[10m])) == 0 and on() sum(up{app="fluent-bit"}) > 0
+            for: 15m
+            labels: { severity: warning }
+            annotations:
+              # Its lines in Loki (spec 0023), for Grafana's Explore.
+              logs: '{namespace="lark-bank", app="fluent-bit"}'
+              summary: "Loki has received no lines for 15 minutes though Fluent Bit runs"
+              runbook: docs/runbook.md#lines-are-not-arriving
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  selector: { matchLabels: { app: prometheus } }
+  template:
+    metadata: { labels: { app: prometheus } }
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.54.1
+          # Exemplars kept beside the samples (bank spec 0024): the traces the latency panels open.
+          args: [ --config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.retention.time=6h, --enable-feature=exemplar-storage ]
+          ports: [ { containerPort: 9090, name: http } ]
+          volumeMounts:
+            - { name: config, mountPath: /etc/prometheus }
+            - { name: extra, mountPath: /etc/prometheus-extra }
+      volumes:
+        - { name: config, configMap: { name: prometheus } }
+        - { name: extra, configMap: { name: prometheus-extra, optional: true } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+spec:
+  type: NodePort
+  selector: { app: prometheus }
+  ports: [ { port: 9090, targetPort: http, nodePort: 30090 } ]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-provisioning
+data:
+  datasources.yml: |
+    apiVersion: 1
+    datasources:
+      # Each latency bucket's exemplar opens its trace in Tempo (bank spec 0024).
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        url: "http://prometheus:9090"
+        isDefault: true
+        jsonData:
+          exemplarTraceIdDestinations: [ { name: trace_id, datasourceUid: tempo } ]
+      # Each service's spans (bank spec 0024); a trace, or one span of it, opens its lines in Loki.
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        url: "http://tempo:3200"
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            spanStartTimeShift: "-5m"
+            spanEndTimeShift: "5m"
+            customQuery: true
+            query: '{namespace="lark-bank"} | trace_id="$${__span.traceId}" | json | span_id="$${__span.spanId}"'
+          lokiSearch: { datasourceUid: loki }
+          serviceMap: { datasourceUid: prometheus }
+      # Each service's lines (bank spec 0023), each trace_id a link to its trace in Tempo.
+      - name: Loki
+        type: loki
+        uid: loki
+        url: "http://loki:3100"
+        jsonData:
+          derivedFields:
+            - { name: trace_id, matcherType: label, matcherRegex: trace_id, datasourceUid: tempo, url: "$${__value.raw}" }
+  dashboards.yml: |
+    apiVersion: 1
+    providers:
+      - { name: bank, type: file, options: { path: /var/lib/grafana/dashboards } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  selector: { matchLabels: { app: grafana } }
+  template:
+    metadata: { labels: { app: grafana } }
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.2.0
+          env:
+            # A demo nobody logs into. Do not copy this into anything that matters.
+            - { name: GF_AUTH_ANONYMOUS_ENABLED, value: "true" }
+            - { name: GF_AUTH_ANONYMOUS_ORG_ROLE, value: Admin }
+            - { name: GF_AUTH_DISABLE_LOGIN_FORM, value: "true" }
+            - { name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH, value: /var/lib/grafana/dashboards/lark-bank.json }
+          ports: [ { containerPort: 3000, name: http } ]
+          volumeMounts:
+            - { name: provisioning, mountPath: /etc/grafana/provisioning/datasources/datasources.yml, subPath: datasources.yml }
+            - { name: provisioning, mountPath: /etc/grafana/provisioning/dashboards/dashboards.yml, subPath: dashboards.yml }
+            - { name: dashboards, mountPath: /var/lib/grafana/dashboards }
+      volumes:
+        - { name: provisioning, configMap: { name: grafana-provisioning } }
+        - { name: dashboards, configMap: { name: grafana-dashboards } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  type: NodePort
+  selector: { app: grafana }
+  ports: [ { port: 3000, targetPort: http, nodePort: 30300 } ]

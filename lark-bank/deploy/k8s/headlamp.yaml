@@ -1,0 +1,65 @@
+# Headlamp (bank spec 0025): the cluster in a browser, with Flux's objects through its Flux plugin. It acts with each
+# person's own token, never its service account's, so Kubernetes' RBAC decides what they see and its audit names them.
+# At home they sign in with Pocket ID; on kind with `kubectl create token`, through `kubectl port-forward`.
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: headlamp }
+# Bound to nothing: in-cluster mode reads the API's address and CA from it, and acts with the caller's token.
+automountServiceAccountToken: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: headlamp }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: headlamp } }
+  template:
+    metadata: { labels: { app: headlamp } }
+    spec:
+      serviceAccountName: headlamp
+      securityContext: { runAsNonRoot: true, runAsUser: 100, seccompProfile: { type: RuntimeDefault } }
+      initContainers:
+        # The Flux plugin, as Artifact Hub publishes it, refused unless its SHA-256 is the published one. The chart's
+        # plugin manager would run npm in a Node sidecar instead, costing more than Headlamp itself.
+        - name: flux-plugin
+          image: curlimages/curl:8.15.0
+          env:
+            - { name: PLUGIN, value: "https://github.com/headlamp-k8s/plugins/releases/download/flux-0.7.0/headlamp-k8s-flux-0.7.0.tar.gz" }
+            - { name: SHA256, value: "837dc962a4ca485b86b010e5a3463d3ffc71c51778125394f006a210921b7c65" }
+          command:
+            - sh
+            - -ec
+            - |
+              curl -fsSL --retry 5 "$PLUGIN" -o /tmp/plugin.tar.gz
+              echo "$SHA256  /tmp/plugin.tar.gz" | sha256sum -c -
+              tar -xzf /tmp/plugin.tar.gz -C /plugins
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ ALL ] } }
+          volumeMounts:
+            - { name: plugins, mountPath: /plugins }
+            - { name: tmp, mountPath: /tmp }
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+      containers:
+        - name: headlamp
+          image: ghcr.io/headlamp-k8s/headlamp:v0.45.0
+          args: [ -in-cluster ]
+          ports: [ { containerPort: 4466, name: http } ]
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ ALL ] } }
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 10
+          volumeMounts: [ { name: plugins, mountPath: /headlamp/plugins } ]
+          resources:
+            requests: { cpu: 20m, memory: 64Mi }
+            limits: { memory: 256Mi }
+      volumes:
+        - { name: plugins, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: headlamp }
+spec:
+  selector: { app: headlamp }
+  ports: [ { port: 80, targetPort: http, name: http } ]

@@ -1,0 +1,72 @@
+// Every event of every transfer, on the topic bank.transfer-events, keyed by transfer id (bank spec 0015). Only ever
+// added to: see money.proto.
+syntax = "proto3";
+
+package bank.events.v1;
+
+import "bank/events/v1/money.proto";
+
+option java_multiple_files = true;
+option java_package = "bank.events.v1";
+
+// One transfer event. First in this file, as the topic's message: its records name it by index 0.
+message TransferEvent {
+  string transfer_id = 1;
+  // The event's place in its transfer, from 1; (transfer_id, sequence) is unique, and what a consumer dedupes on.
+  int64 sequence = 2;
+  int64 at_millis = 3;
+  // Both accounts on every event, so joining transfers to accounts needs no memory of each transfer's Requested.
+  string from_account = 4;
+  string to_account = 5;
+  // A case this consumer does not know (one added after it was built) arrives unset: skip the event, never fail.
+  oneof event {
+    Requested requested = 10;
+    SourceDebited source_debited = 11;
+    Rejected rejected = 12;
+    DestinationCredited destination_credited = 13;
+    CreditRefused credit_refused = 14;
+    SourceRefunded source_refunded = 15;
+    Screened screened = 16;
+  }
+}
+
+message Requested {
+  Money amount = 1;
+}
+
+message SourceDebited {}
+
+// The source said no: nothing moved.
+message Rejected {
+  string reason = 1;
+}
+
+// The transfer is complete.
+message DestinationCredited {}
+
+// The destination said no after the source paid: the money is in flight until the refund.
+message CreditRefused {
+  string reason = 1;
+}
+
+// The refund is done: the transfer ended with nothing moved.
+message SourceRefunded {}
+
+// Screening's decision, before any money moved (bank spec 0018). Declined, the transfer's next event is its end:
+// nothing moved. Approved, it goes on to debit the source.
+message Screened {
+  ScreeningOutcome outcome = 1;
+  // The rule and its version that declined it; unset when it was approved, or when screening did not answer.
+  optional string rule = 2;
+  optional int32 version = 3;
+  // Why, as the check wrote it.
+  string evidence = 4;
+  // False when screening did not answer in time and the bank's own policy decided.
+  bool answered = 5;
+}
+
+enum ScreeningOutcome {
+  SCREENING_OUTCOME_UNSPECIFIED = 0;
+  SCREENING_OUTCOME_APPROVED = 1;
+  SCREENING_OUTCOME_DECLINED = 2;
+}

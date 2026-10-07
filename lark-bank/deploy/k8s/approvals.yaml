@@ -1,0 +1,114 @@
+# Approvals (bank spec 0019), from bank-approvals/ in tweet-street: requests for changes that more than one person
+# agrees to, the checks' rule versions first. A Lark cluster of its own, joined through the pods API as the bank's is,
+# its journal in a database of its own on bank-db-0, its events on bank.approval-events.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata: { name: approvals }
+spec:
+  cluster: { name: bank-db-0 }
+  name: approvals
+  # The bank's role, as the checks' and Pocket ID's databases have, until spec 0021's db-roles gives each its own.
+  owner: bank
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: bank-approvals }
+---
+# The Role the bank's nodes join with (rbac.yaml): the pods to seed from, and the Lease that breaks an even split.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: bank-approvals-cluster }
+subjects: [ { kind: ServiceAccount, name: bank-approvals } ]
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: lark-cluster }
+---
+# The key every node seals page sessions with: a development one here, SOPS's at home.
+apiVersion: v1
+kind: Secret
+metadata: { name: approvals-identity }
+stringData:
+  sessionKey: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bank-approvals
+spec:
+  # Two: requests come a few a day, and one machine down leaves the other serving every request.
+  replicas: 2
+  selector: { matchLabels: { app: bank-approvals } }
+  template:
+    metadata:
+      labels: { app: bank-approvals }
+    spec:
+      serviceAccountName: bank-approvals
+      terminationGracePeriodSeconds: 45
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector: { matchLabels: { app: bank-approvals } }
+      containers:
+        - name: approvals
+          image: bank-approvals:dev
+          imagePullPolicy: Never
+          env:
+            - { name: HOST, value: 0.0.0.0 }
+            - { name: POD_NAME, valueFrom: { fieldRef: { fieldPath: metadata.name } } }
+            - { name: POD_IP, valueFrom: { fieldRef: { fieldPath: status.podIP } } }
+            - { name: CLUSTER_JOIN, value: kubernetes }
+            - { name: DATABASE_URL, value: "jdbc:postgresql://bank-db-0-rw:5432/approvals" }
+            - { name: DATABASE_USER, valueFrom: { secretKeyRef: { name: bank-db-credentials, key: username } } }
+            - { name: DATABASE_PASSWORD, valueFrom: { secretKeyRef: { name: bank-db-credentials, key: password } } }
+            - { name: KAFKA_BOOTSTRAP, value: "kafka:9092" }
+            - { name: KAFKA_USERNAME, value: approvals }
+            - { name: KAFKA_PASSWORD, valueFrom: { secretKeyRef: { name: kafka-users, key: approvals } } }
+            - { name: APICURIO_URL, value: "http://apicurio:8080/apis/registry/v3" }
+            # People sign in through the test issuer on kind and Pocket ID at home (the overlay says which); the
+            # checks ask as an owning service.
+            - { name: IDENTITY_ISSUER, value: "http://issuer:9000" }
+            - { name: IDENTITY_CALLBACK_URL, value: "http://localhost:8070/callback" }
+            - { name: IDENTITY_SESSION_KEY, valueFrom: { secretKeyRef: { name: approvals-identity, key: sessionKey } } }
+            - { name: IDENTITY_SERVICES, value: "checks-service,bank-service" }
+            # Its level, reread every ten seconds from bank-approvals-logging, which Estate's debug switch patches.
+            - { name: LOG_LEVEL_FILE, value: /etc/bank-approvals/logging/level }
+            # Spans to Tempo (bank spec 0024), one request in ten: what trace-cost measured as within the noise.
+            - { name: TELEMETRY_ENABLED, value: "true" }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://tempo:4318" }
+            - { name: TELEMETRY_SAMPLED, value: "0.1" }
+          volumeMounts:
+            - { name: logging, mountPath: /etc/bank-approvals/logging, readOnly: true }
+          ports:
+            - { containerPort: 8070, name: http }
+            - { containerPort: 25530, name: remoting }
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+          # 470 MiB idle in Docker with a 768 MiB limit, half of it heap; 490 after 200 requests.
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { memory: 640Mi }
+      volumes:
+        - name: logging
+          configMap: { name: bank-approvals-logging }
+---
+# Approvals's log level (bank spec 0026): INFO, turned to DEBUG for a while by Estate's debug switch, which turns it back.
+# Flux makes it once and leaves it, so a reconcile never undoes a switch.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bank-approvals-logging
+  annotations: { kustomize.toolkit.fluxcd.io/ssa: IfNotPresent }
+data:
+  level: INFO
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bank-approvals
+spec:
+  # From the host through kind's port mapping, where people's sign-in comes back to localhost:8070.
+  type: NodePort
+  selector: { app: bank-approvals }
+  ports: [ { port: 8070, targetPort: http, name: http, nodePort: 30870 } ]
