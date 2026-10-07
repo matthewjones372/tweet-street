@@ -25,14 +25,16 @@ object LogJsonSpec extends ZIOSpecDefault:
 
   /**
    * What [[work]] wrote to stdout under the app's own `logback.xml`, the tests'
-   * configuration put back after.
+   * configuration put back after. Other specs log while this one runs, so
+   * stdout is taken only while `logback.xml` is in force, never under the
+   * tests' plain lines.
    */
   private def written[E, A](work: ZIO[Any, E, A]): ZIO[Any, E, List[String]] =
     val out    = ByteArrayOutputStream()
     val before = java.lang.System.out
     ZIO
-      .acquireReleaseWith(ZIO.succeed { java.lang.System.setOut(PrintStream(out, true)); configure("logback.xml") })(
-        _ => ZIO.succeed { configure("logback-test.xml"); java.lang.System.setOut(before) }
+      .acquireReleaseWith(ZIO.succeed { configure("logback.xml"); java.lang.System.setOut(PrintStream(out, true)) })(
+        _ => ZIO.succeed { java.lang.System.setOut(before); configure("logback-test.xml") }
       )(_ => work.provideLayer(Runtime.removeDefaultLoggers >>> SLF4J.slf4j))
       .as(out.toString("UTF-8").linesIterator.filter(_.trim.nonEmpty).toList)
 
