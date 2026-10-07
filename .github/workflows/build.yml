@@ -62,10 +62,11 @@ jobs:
         with: { repository: matthewjones372/lark, ref: "${{ steps.pins.outputs.lark }}", path: deps/lark }
       - uses: actions/checkout@v5
         with: { repository: matthewjones372/pelican, ref: "${{ steps.pins.outputs.pelican }}", path: deps/pelican }
-      - name: verdict and lark-bank-events, published locally
+      - name: verdict, lark-bank-events and lark-bank-issuer, published locally
         run: |
           (cd bank-checks && nix develop -c bash -c 'cd ../deps/verdict && sbt -batch publishLocal')
-          (cd lark-bank && nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican :events:publishToMavenLocal)
+          (cd lark-bank && nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican \
+            :events:publishToMavenLocal :issuer:publishToMavenLocal)
       - name: Build and test
         working-directory: bank-checks
         run: nix develop -c sbt -batch compile test scalafmtCheckAll
