@@ -1,5 +1,11 @@
 # tweet-street
 
+[![build](https://github.com/matthewjones372/tweet-street/actions/workflows/build.yml/badge.svg)](https://github.com/matthewjones372/tweet-street/actions/workflows/build.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.4-7F52FF?logo=kotlin&logoColor=white)
+![Scala](https://img.shields.io/badge/Scala-3-DC322F?logo=scala&logoColor=white)
+![JDK](https://img.shields.io/badge/JDK-25-437291?logo=openjdk&logoColor=white)
+
 A small bank, built to see whether a handful of Kotlin and Scala libraries hold up when the money has to add up. It
 is four services: the bank itself on a three-node cluster, transfer screening, changes that need two people to
 agree, and fine-grained access control. The name is Wall Street for birds, since it runs on
