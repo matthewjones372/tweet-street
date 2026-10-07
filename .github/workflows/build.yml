@@ -53,10 +53,19 @@ jobs:
       - uses: cachix/install-nix-action@v31
       - uses: actions/checkout@v5
         with: { repository: matthewjones372/verdict, path: deps/verdict }
+      - id: pins
+        run: |
+          pin() { nix eval --impure --raw --expr "(builtins.fromJSON (builtins.readFile ./lark-bank/flake.lock)).nodes.$1.locked.rev"; }
+          echo "lark=$(pin lark)" >> "$GITHUB_OUTPUT"
+          echo "pelican=$(pin pelican)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v5
+        with: { repository: matthewjones372/lark, ref: "${{ steps.pins.outputs.lark }}", path: deps/lark }
+      - uses: actions/checkout@v5
+        with: { repository: matthewjones372/pelican, ref: "${{ steps.pins.outputs.pelican }}", path: deps/pelican }
       - name: verdict and lark-bank-events, published locally
         run: |
           (cd bank-checks && nix develop -c bash -c 'cd ../deps/verdict && sbt -batch publishLocal')
-          (cd lark-bank && nix develop .#ci -c ./gradlew :events:publishToMavenLocal)
+          (cd lark-bank && nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican :events:publishToMavenLocal)
       - name: Build and test
         working-directory: bank-checks
         run: nix develop -c sbt -batch compile test scalafmtCheckAll
@@ -101,9 +110,18 @@ jobs:
       - name: The model's tests
         working-directory: bank-access
         run: nix flake check --print-build-logs
+      - id: pins
+        run: |
+          pin() { nix eval --impure --raw --expr "(builtins.fromJSON (builtins.readFile ./lark-bank/flake.lock)).nodes.$1.locked.rev"; }
+          echo "lark=$(pin lark)" >> "$GITHUB_OUTPUT"
+          echo "pelican=$(pin pelican)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v5
+        with: { repository: matthewjones372/lark, ref: "${{ steps.pins.outputs.lark }}", path: deps/lark }
+      - uses: actions/checkout@v5
+        with: { repository: matthewjones372/pelican, ref: "${{ steps.pins.outputs.pelican }}", path: deps/pelican }
       - name: lark-bank-events, published locally
         working-directory: lark-bank
-        run: nix develop .#ci -c ./gradlew :events:publishToMavenLocal
+        run: nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican :events:publishToMavenLocal
       - name: Build and test access-sync and the client
         working-directory: bank-access
         run: nix develop -c ./gradlew build
