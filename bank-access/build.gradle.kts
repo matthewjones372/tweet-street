@@ -1,9 +1,20 @@
 plugins {
     kotlin("jvm") version "2.4.10" apply false
+    id("org.jetbrains.kotlinx.kover") version "0.9.11" apply false
+    id("dev.detekt") version "2.0.0-alpha.6" apply false
 }
 
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
+
+    apply(plugin = "org.jetbrains.kotlinx.kover")
+    apply(plugin = "dev.detekt")
+
+    // Gauntlet reads detekt's SARIF and ratchets on it; existing findings don't fail the build.
+    extensions.configure<dev.detekt.gradle.extensions.DetektExtension> {
+        buildUponDefaultConfig.set(true)
+        ignoreFailures.set(true)
+    }
 
     repositories {
         mavenCentral()
