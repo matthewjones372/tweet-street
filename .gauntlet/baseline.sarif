@@ -1,0 +1,2310 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "properties": {
+        "gauntlet": {
+          "baseline": {
+            "commit": "b556fa88da3c3a26d10749c3fc0993157619e4e3",
+            "gauntletVersion": "0.1.0-rc.14",
+            "irHash": "20342ed9db6b03fa526590bbaac6d3835e82792f4f95961f3ad0fcd446d66c82"
+          },
+          "legacy": [],
+          "metrics": {
+            "coverage": {
+              "higherIsBetter": true,
+              "perFile": {
+                "bank-access/client/src/main/kotlin/bank/access/client/Access.kt": 97.5,
+                "bank-access/client/src/main/kotlin/bank/access/client/Decisions.kt": 89.06,
+                "bank-access/client/src/main/kotlin/bank/access/client/Relations.kt": 100,
+                "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt": 37.8,
+                "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt": 87.16,
+                "bank-access/sync/src/main/kotlin/bank/access/sync/LevelFile.kt": 60,
+                "bank-access/sync/src/main/kotlin/bank/access/sync/Main.kt": 0,
+                "bank-access/sync/src/main/kotlin/bank/access/sync/Relationships.kt": 85.71,
+                "bank-access/sync/src/main/kotlin/bank/access/sync/Tracing.kt": 40.74
+              },
+              "unit": "%",
+              "value": 70.37
+            },
+            "integrity/assertions-per-test": {
+              "higherIsBetter": true,
+              "unit": "count",
+              "value": 63
+            },
+            "integrity/executed-tests": {
+              "higherIsBetter": true,
+              "unit": "count",
+              "value": 74
+            },
+            "integrity/property-tests": {
+              "higherIsBetter": true,
+              "unit": "count",
+              "value": 4
+            },
+            "integrity/quarantined-tests": {
+              "higherIsBetter": false,
+              "unit": "count",
+              "value": 0
+            },
+            "integrity/skipped-tests": {
+              "higherIsBetter": false,
+              "unit": "count",
+              "value": 0
+            },
+            "integrity/suppressions": {
+              "higherIsBetter": false,
+              "unit": "count",
+              "value": 0
+            }
+          },
+          "testIds": [
+            "bank.access.client.ClientSpec.a staff check and a refusal land on bank access-decisions, and a customer seeing their own does not()",
+            "bank.access.client.ClientSpec.an owner may, a stranger may not, one acting may only with a grant, and a request asks each question once()",
+            "bank.access.client.ClientSpec.every relation the client names is one the model has, so a renamed relation fails the build()",
+            "bank.access.client.ClientSpec.with OpenFGA stopped, or slower than the budget, every check is unanswered, which is a 503, and counted()",
+            "bank.access.fga.CarriedHeadersTest.every call sends the headers the caller carries, the store's lookup included()",
+            "bank.access.sync.LevelFileSpec.DEBUG in the file turns its own lines to DEBUG, and INFO turns them back()",
+            "bank.access.sync.LevelFileSpec.a file that is missing, or names no level, changes nothing()",
+            "bank.access.sync.LogJsonSpec.a line, its MDC and its exception are one JSON object with the shared fields()",
+            "bank.access.sync.SyncSpec.an emptied store, rebuilt from offset zero and Pocket ID, answers every check as it did before()",
+            "bank.access.sync.SyncSpec.an opened account's owner sees it, an approved grant lets Bob see it until it expires, and a group is its members()",
+            "bank.access.sync.TracedSyncSpec.an account published inside a trace has its owner written to OpenFGA in a span of that trace()",
+            "checks.access.adapters.AccessSpec.Access - a session signed out of, or never opened, says nobody",
+            "checks.access.adapters.AccessSpec.Access - a sign-in finished in another browser, finished twice, or finished too late is refused",
+            "checks.access.adapters.AccessSpec.Access - a sign-in only ever returns to a page of the check",
+            "checks.access.adapters.AccessSpec.Access - someone in none of the admins' groups is refused, and given no session",
+            "checks.access.adapters.AccessSpec.Access - someone the provider puts in an admins' group signs in, back where they were, and their session says who",
+            "checks.access.adapters.OidcProviderSpec.ID tokens - one for another client, for another sign-in, or from another issuer is refused",
+            "checks.access.adapters.OidcProviderSpec.ID tokens - one the provider signed for this client, with the sign-in's nonce, names the person and their groups",
+            "checks.admin.AdminApiSpec.The admin API - a draft naming a field its record lacks is checked, not stored",
+            "checks.admin.AdminApiSpec.The admin API - a rule over movements is dry-run as the evaluator counts, and made live",
+            "checks.admin.AdminApiSpec.The admin API - a rule over transfers is drafted, read, tried, dry-run and made live, and then declines the next one",
+            "checks.admin.AdminApiSpec.The admin API - nothing is read or written without signing in",
+            "checks.app.AppSpec.The app - it is healthy, describes /screen in its OpenAPI document, and measures each screening",
+            "checks.app.LogJsonSpec.LogJson - the app's lines, and its libraries', are JSON objects, and an annotation is a field of its own",
+            "checks.app.MigrationsSpec.Migrations - migrate applies every context's migrations once, and a second run applies none",
+            "checks.app.MigrationsSpec.Migrations - the app refuses to start on a database migrate has not run on, naming what is pending",
+            "checks.app.OpenApiSpec.The OpenAPI document - the committed openapi.json is the one the check serves",
+            "checks.app.WizardSpec.The wizard - an admin writes a rule of two groups with a negation, reads it, tries it, and makes it live",
+            "checks.app.WizardSpec.The wizard - someone the provider puts in none of the admins' groups is refused, and given no session",
+            "checks.bankevents.AccountEventsSpec.Account events - a consumer stopped mid-run and started again leaves no event unchecked",
+            "checks.bankevents.ApprovalEventsSpec.Approval events - a request rejected, withdrawn, superseded or expired ends without approval",
+            "checks.bankevents.ApprovalEventsSpec.Approval events - another kind's events, and the record's own, are not the check's to act on",
+            "checks.bankevents.ApprovalEventsSpec.Approval events - approval given, automatically or by people, is a decision for the content it names",
+            "checks.bankevents.HandledSpec.Handled - an event published in a trace is handled in a consumer span whose parent is the publish",
+            "checks.bankevents.HandledSpec.Handled - an event published in no trace is handled in none",
+            "checks.bankevents.MovementsSpec.Movements - a debit's reference is its transfer",
+            "checks.bankevents.MovementsSpec.Movements - a record framed as the bank frames it reads back as the movement it was",
+            "checks.bankevents.MovementsSpec.Movements - a record not framed is refused, not misread",
+            "checks.bankevents.MovementsSpec.Movements - an event of a kind added after this build passes without a word",
+            "checks.bankevents.MovementsSpec.Movements - every account event kind becomes the right movement, or none",
+            "checks.monitoring.domain.FlagSpec.Flag - protoc's classes read every Flag zio-schema writes, field for field",
+            "checks.monitoring.domain.FlagSpec.Flag - the flags' schema breaks nothing published before it",
+            "checks.policy.adapters.ApprovingSpec.Asking Approvals - a first version tightens, whatever its reach; a new condition reaching as far reshapes",
+            "checks.policy.adapters.ApprovingSpec.Asking Approvals - a refused version is never in force, and the one before it stays",
+            "checks.policy.adapters.ApprovingSpec.Asking Approvals - a version made live waits, asked about with what it changes, and is in force only once approval is given",
+            "checks.policy.adapters.ApprovingSpec.Asking Approvals - an approval of other content is refused, and one heard twice is answered twice and applied once",
+            "checks.policy.adapters.ApprovingSpec.Asking Approvals - switching a low rule off is asked as a switch-off, and a draft is stored without asking",
+            "checks.policy.adapters.PostgresVersionsSpec.Postgres versions - a rule over transfers cannot become a rule over movements",
+            "checks.policy.adapters.PostgresVersionsSpec.Postgres versions - a version stored by one node is live on another within a second",
+            "checks.policy.adapters.PostgresVersionsSpec.Postgres versions - switching a rule off keeps its history",
+            "checks.policy.domain.PolicySpec.Policy - a draft leaves the live version in force",
+            "checks.policy.domain.PolicySpec.Policy - a draft naming a field its record lacks is refused with that error",
+            "checks.policy.domain.PolicySpec.Policy - a draft over the record's own fields is its rule",
+            "checks.policy.domain.PolicySpec.Policy - a draft reading a text field as a number is refused",
+            "checks.policy.domain.PolicySpec.Policy - a rule over movements cannot read a proposed transfer's fields",
+            "checks.policy.domain.PolicySpec.Policy - a rule switched off has no live version, and keeps every version it had",
+            "checks.policy.domain.PolicySpec.Policy - a rule's latest live version is the one in force",
+            "checks.policy.domain.PolicySpec.Policy - a version waiting for approval, or refused it, leaves the version before it in force",
+            "checks.policy.domain.PolicySpec.Policy - live rules are in the admin's order",
+            "checks.policy.domain.PolicySpec.Policy - the hash of what is asked is Approvals' own: before, after and facts, the facts in key order",
+            "checks.policy.domain.RecordsSpec.Records - a rule over a movement can read each of its fields",
+            "checks.policy.domain.RecordsSpec.Records - a rule over a proposed transfer can read each of its fields",
+            "checks.screening.adapters.ScreeningHttpSpec.POST /screen - a second request for a transfer answers the first decision, though the rules have changed",
+            "checks.screening.adapters.ScreeningHttpSpec.POST /screen - a transfer over the bound is declined by the rule, in the bank's words",
+            "checks.screening.adapters.ScreeningHttpSpec.POST /screen - an amount that is not a number is refused",
+            "checks.screening.adapters.ScreeningHttpSpec.POST /screen - p99 over 10,000 requests is under 20 ms",
+            "checks.screening.adapters.TracedSpec.Traced - a request in a trace is answered in a server span whose parent is the caller's",
+            "checks.screening.adapters.TracedSpec.Traced - a request with no trace starts one of its own",
+            "checks.screening.domain.ScreenSpec.Screen - a decline names the rule and version, with verdict's evidence",
+            "checks.screening.domain.ScreenSpec.Screen - a declining rule declines exactly the transfers its bounds say",
+            "checks.screening.domain.ScreenSpec.Screen - a preview weighs every live rule, and decides as the check would",
+            "checks.screening.domain.ScreenSpec.Screen - a rule reads the hour the transfer was requested, in UTC",
+            "checks.screening.domain.ScreenSpec.Screen - the first rule in the admin's order that holds declines",
+            "checks.screening.domain.ScreenSpec.Screen - with no rule live, every transfer is approved"
+          ]
+        }
+      },
+      "results": [],
+      "tool": {
+        "driver": {
+          "name": "gauntlet"
+        }
+      }
+    },
+    {
+      "results": [
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Access.kt"
+                },
+                "region": {
+                  "endColumn": 36,
+                  "endLine": 79,
+                  "startColumn": 14,
+                  "startLine": 79
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "The caught exception is swallowed. The original exception could be lost."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "c2a0061b22571d41e0c3d22a4985f18a8f7cc3350acc34c56e56979fd3d84dfd",
+            "gauntlet/line/v1": "6d323047302e9751b5b8b0bb9364cfd4dbe7b7ff2a3251048cbe155ffe07764d",
+            "gauntlet/symbol/v1": "72998d36e8d9cd279d852bb9f3d1ef94d2f9e0a043a916d24c53d920880b682d",
+            "signature/v1": "32c94494c8803a6c049e9b835dadb48ae094185e"
+          },
+          "ruleId": "detekt.exceptions.SwallowedException"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Access.kt"
+                },
+                "region": {
+                  "endColumn": 130,
+                  "endLine": 77,
+                  "startColumn": 1,
+                  "startLine": 77
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "3bc3f030037dbce098310ba4c23058296dd57c6114dcb5df8ba0087e77c2bf79",
+            "gauntlet/line/v1": "d5f483cdc31bad02cd48017ca2ede5bbb9af508cd9dbee50e921d79ea195438c",
+            "gauntlet/symbol/v1": "2469b57abea6a77636b8aa698c51eea4325485ee96d29c6aac5b2254988f1956",
+            "signature/v1": "1a9864d9951876aa9a2e4c449ecbf2a6942c56cb"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Access.kt"
+                },
+                "region": {
+                  "endColumn": 123,
+                  "endLine": 78,
+                  "startColumn": 1,
+                  "startLine": 78
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "8628c6d564c70f1fcd6ef08661ed32815ebdcfe1f47ee1c63c548fcdf5ec9c25",
+            "gauntlet/line/v1": "d34f43c22e198e22125b1a3dc980a4a3ee58f6d71642b36ad2c02223cb93bc3a",
+            "gauntlet/symbol/v1": "2469b57abea6a77636b8aa698c51eea4325485ee96d29c6aac5b2254988f1956",
+            "signature/v1": "b120ee9de6a9def45ee4c13f769e90fb4eb2eda0"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Access.kt"
+                },
+                "region": {
+                  "endColumn": 123,
+                  "endLine": 85,
+                  "startColumn": 1,
+                  "startLine": 85
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "8ab716bad50503c812672ecc816d7fbb721b4f93cf4fac0b7e4d3c9809339341",
+            "gauntlet/line/v1": "9f2c3435da5294956deb644f5c58e78a8ad556b6a6c2ce6d18edf6335e8a3760",
+            "gauntlet/symbol/v1": "c50bbcc12242aa4009c1eea521cbdde37528cb7a7fdc0d4bf73146a1994c4a8c",
+            "signature/v1": "07de9fed70a4fc7392f9b3fd38be434717e6ccd0"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Decisions.kt"
+                },
+                "region": {
+                  "endColumn": 100,
+                  "endLine": 74,
+                  "startColumn": 99,
+                  "startLine": 74
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "b4235e6607d847d8ed4d716957097b2ae13fe7d426ad1ccc22b7e0767e847af6",
+            "gauntlet/line/v1": "a3f737c1db9e3adf247126be0bdc2dcd7031ca6330bfb2ff36f1ad00a83367f5",
+            "gauntlet/symbol/v1": "83c990e22f390d94631162271f8e43a9d2b92addc75912f61e0fc1654be4e422",
+            "signature/v1": "a77298e4c7bbc98a0c0e0e29f8b9e1a967a89aca"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Decisions.kt"
+                },
+                "region": {
+                  "endColumn": 46,
+                  "endLine": 130,
+                  "startColumn": 43,
+                  "startLine": 130
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "4551875680a6aa4db49f189f5f7de66a920730f48195a88d6a369cbb8d1b1cf6",
+            "gauntlet/line/v1": "38eb3db2f357def7396fd56212fcdde2d119b747b14efce5c1d24645985190ec",
+            "gauntlet/symbol/v1": "e83cf9aa808396f23f4840473d1566e9b0daed4e9a280e90cb6c9f4482243bac",
+            "signature/v1": "4145925a87f7a25a98b0d21d9a544a8635d4d6eb"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Decisions.kt"
+                },
+                "region": {
+                  "endColumn": 51,
+                  "endLine": 130,
+                  "startColumn": 48,
+                  "startLine": 130
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "4551875680a6aa4db49f189f5f7de66a920730f48195a88d6a369cbb8d1b1cf6",
+            "gauntlet/line/v1": "38eb3db2f357def7396fd56212fcdde2d119b747b14efce5c1d24645985190ec",
+            "gauntlet/symbol/v1": "e83cf9aa808396f23f4840473d1566e9b0daed4e9a280e90cb6c9f4482243bac",
+            "signature/v1": "cbdad8be42dd293a63bb781ab9fd9017be903805"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Decisions.kt"
+                },
+                "region": {
+                  "endColumn": 42,
+                  "endLine": 133,
+                  "startColumn": 39,
+                  "startLine": 133
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "e2540b35c03c91944d2eb2b011f33eb367134a7af9dae54192f3d28966c145cb",
+            "gauntlet/line/v1": "22fcbbc945a473caa2f15d53008f6e8c4842eb9e56d70f3ad004780e51b68e20",
+            "gauntlet/symbol/v1": "e83cf9aa808396f23f4840473d1566e9b0daed4e9a280e90cb6c9f4482243bac",
+            "signature/v1": "4145925a87f7a25a98b0d21d9a544a8635d4d6eb"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Decisions.kt"
+                },
+                "region": {
+                  "endColumn": 47,
+                  "endLine": 133,
+                  "startColumn": 44,
+                  "startLine": 133
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "e2540b35c03c91944d2eb2b011f33eb367134a7af9dae54192f3d28966c145cb",
+            "gauntlet/line/v1": "22fcbbc945a473caa2f15d53008f6e8c4842eb9e56d70f3ad004780e51b68e20",
+            "gauntlet/symbol/v1": "e83cf9aa808396f23f4840473d1566e9b0daed4e9a280e90cb6c9f4482243bac",
+            "signature/v1": "cbdad8be42dd293a63bb781ab9fd9017be903805"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Decisions.kt"
+                },
+                "region": {
+                  "endColumn": 74,
+                  "endLine": 133,
+                  "startColumn": 71,
+                  "startLine": 133
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "e2540b35c03c91944d2eb2b011f33eb367134a7af9dae54192f3d28966c145cb",
+            "gauntlet/line/v1": "22fcbbc945a473caa2f15d53008f6e8c4842eb9e56d70f3ad004780e51b68e20",
+            "gauntlet/symbol/v1": "e83cf9aa808396f23f4840473d1566e9b0daed4e9a280e90cb6c9f4482243bac",
+            "signature/v1": "5c7294febd484ad34903b23979b89ba44fbb8bb2"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Decisions.kt"
+                },
+                "region": {
+                  "endColumn": 124,
+                  "endLine": 121,
+                  "startColumn": 1,
+                  "startLine": 121
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "da401bd3749ef2bbbaaff6ac1152314142be2c826b8b443f609859c24bbedc91",
+            "gauntlet/line/v1": "0173f53b59d0b0ff57f37ca347669f52a77f7aeefb2cef797b1c3274eaccba0e",
+            "gauntlet/symbol/v1": "34cba8f7f522e9035886aa898ea421fbecb5bbf9ce8625fa0fdf1eb396aaa9c7",
+            "signature/v1": "c08f5da064b2945995c29633abcca63fea8010ef"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Decisions.kt"
+                },
+                "region": {
+                  "endColumn": 141,
+                  "endLine": 125,
+                  "startColumn": 1,
+                  "startLine": 125
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "dbd58ca37f457955680a02c8c28269a87e4c043a564933a1336567cb3bf100db",
+            "gauntlet/line/v1": "408b7b91b26929e4639f82531691eecbbc8205e583dcd9fbf7eae28a702edce1",
+            "gauntlet/symbol/v1": "cd0391f11abd6c21c06d289a1cb903e1824263248bb3d138b4be00d7f184c950",
+            "signature/v1": "ffd321fec987daca0e3c57571e42876b925e9389"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Decisions.kt"
+                },
+                "region": {
+                  "endColumn": 132,
+                  "endLine": 128,
+                  "startColumn": 1,
+                  "startLine": 128
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "d24acb6256a56af611036dfbdec4e7d3bc375163d74212a62eb3e254bbc6eda6",
+            "gauntlet/line/v1": "8fd784baaf74cad40586dceece0134fcc415eac5a63d5fdf0eb18c4d8e6bdfa9",
+            "gauntlet/symbol/v1": "cd0391f11abd6c21c06d289a1cb903e1824263248bb3d138b4be00d7f184c950",
+            "signature/v1": "655b47b9449f7327a80b7300a6c9722bcf3b701d"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Decisions.kt"
+                },
+                "region": {
+                  "endColumn": 123,
+                  "endLine": 130,
+                  "startColumn": 1,
+                  "startLine": 130
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "a1d67134e7c9b2df04df5d39870e9e53f75029387fc3cc99a3d1ac96320ef2b5",
+            "gauntlet/line/v1": "b873c00a1c00ef5a0e3eaf29d6fb05c9cae43f68f4ec1ed53233ba9801072a80",
+            "gauntlet/symbol/v1": "cd0391f11abd6c21c06d289a1cb903e1824263248bb3d138b4be00d7f184c950",
+            "signature/v1": "08bd47dfe92565518b3579e2b980d8c816988b5f"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Decisions.kt"
+                },
+                "region": {
+                  "endColumn": 134,
+                  "endLine": 133,
+                  "startColumn": 1,
+                  "startLine": 133
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "9388877bff8f5ca11f5eae7704cbc1478ca5b6ba7ef67c7445e4c5cb2a7cb380",
+            "gauntlet/line/v1": "01ffab094c3a38bee8ab1f99a3e04e30f0952a600fe2270bff69aef73b861538",
+            "gauntlet/symbol/v1": "cd0391f11abd6c21c06d289a1cb903e1824263248bb3d138b4be00d7f184c950",
+            "signature/v1": "0a417b2dabc8f35c289367883b8ba18eb1257907"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/main/kotlin/bank/access/client/Relations.kt"
+                },
+                "region": {
+                  "endColumn": 123,
+                  "endLine": 33,
+                  "startColumn": 1,
+                  "startLine": 33
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1/nosym": "55c4d39046f69eab59107df374257274ca1513ad11bf2c9e6a221fe33f879015",
+            "gauntlet/line/v1": "43e596ab4e9b285e72c1bc1d255c51d75ff2726c72fa3547ea880569b101a1c2",
+            "signature/v1": "7051eeb7d42b1b8a80538815391c38f5894148a1"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/test/kotlin/bank/access/client/ClientSpec.kt"
+                },
+                "region": {
+                  "endColumn": 124,
+                  "endLine": 40,
+                  "startColumn": 1,
+                  "startLine": 40
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "edd8371c8fe46f42b46a1562b3a2dfdd5feab2984d6909a77dc3bd30c483661e",
+            "gauntlet/line/v1": "911a9263a47291a5a21c35905a2a71ad327356f1155094899d1ae43bbfb95df0",
+            "gauntlet/symbol/v1": "3729d4a70aee35ae491ef81a142343213c723db767c88579dff1a115c3c4d8f6",
+            "signature/v1": "998da4a5d7aea54dde333ba6348b0d1610990b9b"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/test/kotlin/bank/access/client/ClientSpec.kt"
+                },
+                "region": {
+                  "endColumn": 124,
+                  "endLine": 118,
+                  "startColumn": 1,
+                  "startLine": 118
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "9484561e2cda246da6450600f7c74c4bbdd761b6cc7cc42fbacb6445b8b73444",
+            "gauntlet/line/v1": "24c242270d2b7aacb18c23a0b7602b4d126c0f6fa1fe7c38c5c662aaa5af0076",
+            "gauntlet/symbol/v1": "525d0a858375a95722040021b9b110f303f8faa6cec3b75ea84b75a950244d14",
+            "signature/v1": "2c98013ac320eaaaf53b1a7cdd296819f785c19b"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/test/kotlin/bank/access/client/ClientSpec.kt"
+                },
+                "region": {
+                  "endColumn": 132,
+                  "endLine": 123,
+                  "startColumn": 1,
+                  "startLine": 123
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "959c2a51056541f16e51f9a3756a5a1d534e38eab5f80a90217fda7ec8e60d7e",
+            "gauntlet/line/v1": "cf305fa67f51947c1bfeba9f8902c9890a2fc27c19d3fd2dea700127966a71a1",
+            "gauntlet/symbol/v1": "525d0a858375a95722040021b9b110f303f8faa6cec3b75ea84b75a950244d14",
+            "signature/v1": "824773c8a5522238190349be0794e5d6806da4ac"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/client/src/test/kotlin/bank/access/client/ClientSpec.kt"
+                },
+                "region": {
+                  "endColumn": 131,
+                  "endLine": 138,
+                  "startColumn": 1,
+                  "startLine": 138
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "c79a35b1c357779dab9c6fb55b0291da9a5997bbdb030167a6fc7d5f4cb6a306",
+            "gauntlet/line/v1": "3b4b74d9006882e2673a8b59c07c922108c16f17dee9ce4ec88f39046e6826b1",
+            "gauntlet/symbol/v1": "ae9f9247df2cc0a5d359fa6a33a599d8c99b367fed6b4b4cacce7bca25b21fbf",
+            "signature/v1": "75e536aa093df3175992cb2fb6c791ae4f5a62af"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 57,
+                  "endLine": 36,
+                  "startColumn": 56,
+                  "startLine": 36
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "b98febec77c1a57fbf9482d89c345fbad4511dbc21fd9c83562519901d5b417a",
+            "gauntlet/line/v1": "eaec72e8a8bf59457023058e05b5ef9ccb278af2545dea257fa04514ec149b83",
+            "gauntlet/symbol/v1": "3a41b8f17de26747347584fc2bd571b0004df1e675118b548041c3fdcd7bd5a6",
+            "signature/v1": "9e6571793626e3f8f0b73098c83b89165cb8f82c"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 44,
+                  "endLine": 165,
+                  "startColumn": 41,
+                  "startLine": 165
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "4a310faadc1380c01a53502a389d4503d3fe3551ab8c38ed91ca19c313386ff5",
+            "gauntlet/line/v1": "a343a041b40baf056a9af87d0a8f5ebadbf125b83105ef61110f8de793c003e4",
+            "gauntlet/symbol/v1": "31ce5c64928c089baf4c9b966e6acac8ef8f6ec47b1cb35e73fa869f0e2793df",
+            "signature/v1": "b2b00036bf7f61ddf8b4cf0e8418a2390f0c1703"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 49,
+                  "endLine": 165,
+                  "startColumn": 46,
+                  "startLine": 165
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "4a310faadc1380c01a53502a389d4503d3fe3551ab8c38ed91ca19c313386ff5",
+            "gauntlet/line/v1": "a343a041b40baf056a9af87d0a8f5ebadbf125b83105ef61110f8de793c003e4",
+            "gauntlet/symbol/v1": "31ce5c64928c089baf4c9b966e6acac8ef8f6ec47b1cb35e73fa869f0e2793df",
+            "signature/v1": "0ed7a144101461e705cc09893693f230f333efeb"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 122,
+                  "endLine": 27,
+                  "startColumn": 1,
+                  "startLine": 27
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1/nosym": "9b2adbf327f2c06947340f324f3bae0b0ad9c81604e11d6998712aa86a626f7a",
+            "gauntlet/line/v1": "ad3362e719624966c0d9b7e8c814ff9034fd16c08dff9ac0dc9bccef89333b9f",
+            "signature/v1": "c4809d3b45e52780b52bc7e6e991e1e2e7b45e02"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 122,
+                  "endLine": 28,
+                  "startColumn": 1,
+                  "startLine": 28
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1/nosym": "586b488ee83fcde626766fa388deb69180b191f3c0969eab2bd1e2cfb9061091",
+            "gauntlet/line/v1": "32f15341977cafa92da18495005ac83c7cbfc23d508623a799d4e6df67975960",
+            "signature/v1": "c4809d3b45e52780b52bc7e6e991e1e2e7b45e02"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 131,
+                  "endLine": 75,
+                  "startColumn": 1,
+                  "startLine": 75
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "03edd286550d0640f923871141f8105ad1e843aaf8340d75acbc4cc4bcaa0225",
+            "gauntlet/line/v1": "dfdbf845770d47379d334d40764e75154a225acf9eabe6809c3ae7fdc54d6f46",
+            "gauntlet/symbol/v1": "01a04ef4b31c8054c1797a5f7fc28c9dbb07441d461813a6e64825e9f20bc031",
+            "signature/v1": "600c737f1d5196d98f604967ffa15d6171dab793"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 123,
+                  "endLine": 98,
+                  "startColumn": 1,
+                  "startLine": 98
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "695146468896aa4293869ca77b6f0533215e86d6b2ec38a9dfcb3bae2de981e3",
+            "gauntlet/line/v1": "8270e5b016ff0d7fc05107485a34a9276ed21a834d8253ff05552b2d4380fc5f",
+            "gauntlet/symbol/v1": "f3a53e07b1a79370eaef4faac206b70e421d9182466f35ce9dd0cc3051a9439e",
+            "signature/v1": "275614f5f7ef13d7a0b7e11772b20d45a5578f84"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 147,
+                  "endLine": 99,
+                  "startColumn": 1,
+                  "startLine": 99
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "c9895fa80e9fb144408ee70f638c0b70962a4dd0fc51bc76e692ea7daa159d1b",
+            "gauntlet/line/v1": "56bdb863bca01011ab1aaf6b6fda355d98b328ef834e2300d9ee2d4fd67220ad",
+            "gauntlet/symbol/v1": "f3a53e07b1a79370eaef4faac206b70e421d9182466f35ce9dd0cc3051a9439e",
+            "signature/v1": "8fd90120ed0d7e0fcfde6a80bd95b6fcc0501460"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 130,
+                  "endLine": 108,
+                  "startColumn": 1,
+                  "startLine": 108
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "69f85630d4cb93439e4dda26d6358807a3f222dd18815bee39f1e395b41e0140",
+            "gauntlet/line/v1": "fcd737f4a403686f33b106f82bb4a817ee041fb6d0a3fcd97f29d939adfdb7e4",
+            "gauntlet/symbol/v1": "fde47d03a5dc26b97614fc7f877108b5bf855cac8b553cd57c685ffc6f4e7293",
+            "signature/v1": "08c84023d0200c82171009ef11c895e70bbc3916"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 134,
+                  "endLine": 124,
+                  "startColumn": 1,
+                  "startLine": 124
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "75128983bb06355ca6cfcf6e220447b82ed28aa390adfe835652814463056ecc",
+            "gauntlet/line/v1": "15450405a77484ce2ab9823d3f781342058227b8cca8480d9e6beef3bc0623a4",
+            "gauntlet/symbol/v1": "5ec2391246b1e44f5758fed26a6147aba4a425e3626850147e94a994600a2f2a",
+            "signature/v1": "2de8a3bd033763b3b8c939b655c37a33460a31d0"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 139,
+                  "endLine": 138,
+                  "startColumn": 1,
+                  "startLine": 138
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "a804a11c4a9a8fdd3c4561bd105ce3a7342ce1714e1b47a98dd18d6b507960eb",
+            "gauntlet/line/v1": "19c13791058f89ded22333673c9cfac8cba7ede09ade132789c7d4cdc9cce8e0",
+            "gauntlet/symbol/v1": "0d9e4c21cd5aaaccbfdf8960ff5bdd58a92a8ca91814c2e1a140c06b66d3a3ad",
+            "signature/v1": "a0fd0f8e681c781c509e80da1f5282d247664123"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 137,
+                  "endLine": 158,
+                  "startColumn": 1,
+                  "startLine": 158
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "b7b2edfb07f7d386fdd7b492185836f3f01c3c8768a3631a9b4c5dae1b342ad1",
+            "gauntlet/line/v1": "b756cb7e966dcce0082640f60d912dac661497445969716d5df79d93da52ff89",
+            "gauntlet/symbol/v1": "d91ee8478393f108982533fa674c0877e2b659b7cb3db1454a5b09119a15b922",
+            "signature/v1": "483513471f3469c3f2bb632f24e84d3b617f5ac4"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/main/kotlin/bank/access/fga/Fga.kt"
+                },
+                "region": {
+                  "endColumn": 151,
+                  "endLine": 165,
+                  "startColumn": 1,
+                  "startLine": 165
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "a7e3e4105ce343c78eb6cedab9e2c1e93d15dd37827f5626b97b410842c037b4",
+            "gauntlet/line/v1": "04d8451a6fa80984e727e88123a885f0e24cfc72a8c6fcea7efb472206a319cd",
+            "gauntlet/symbol/v1": "d91ee8478393f108982533fa674c0877e2b659b7cb3db1454a5b09119a15b922",
+            "signature/v1": "0c7189b959baca90744d7b3088efbfc3b9364fa1"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/test/kotlin/bank/access/fga/CarriedHeadersTest.kt"
+                },
+                "region": {
+                  "endColumn": 143,
+                  "endLine": 18,
+                  "startColumn": 1,
+                  "startLine": 18
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "61bc498741147e38261a07ed0b7249ff6f01a810b8f7d3e1f80efff20057cd66",
+            "gauntlet/line/v1": "31d7a990cddedf1c26036634af50434a0116776ef7d0c8f6fd08b49e2a1839ed",
+            "gauntlet/symbol/v1": "b8cdf5aca89d2472822ff451e5db3ae23ed1d3216dea9a0d577bf4196eaaea96",
+            "signature/v1": "05b3a69f4f045ea17620ce6d2bb5250c5a32ae7f"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/fga/src/test/kotlin/bank/access/fga/CarriedHeadersTest.kt"
+                },
+                "region": {
+                  "endColumn": 135,
+                  "endLine": 26,
+                  "startColumn": 1,
+                  "startLine": 26
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "b095994a045942223f500ef747871ce86c2ae371bad8f52d9fedc80fb05d93a8",
+            "gauntlet/line/v1": "fd745e0c3ea8b7200a6ff2bcee71526ad3586a4326b75801e2dd21cd47e17e58",
+            "gauntlet/symbol/v1": "b8cdf5aca89d2472822ff451e5db3ae23ed1d3216dea9a0d577bf4196eaaea96",
+            "signature/v1": "fe3c223397509995a57ac38fa6b50e35c3930277"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 39,
+                  "endLine": 86,
+                  "startColumn": 22,
+                  "startLine": 86
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "417b9c3642f8b67fc346bf9d7b14b2cf4fe3b879cdcca6c3cd836aa4113cf4ae",
+            "gauntlet/line/v1": "0f762a893347657639d11ef9aefc35b4d6b3b80dcdc6a73c062dd8dd8103f5f1",
+            "gauntlet/symbol/v1": "992779741f65932cbbd6755b956bf362c806a3c5f1cb96f43b50355e1748cccd",
+            "signature/v1": "e4b83aa6a765354b9d1b1ec57b8dac472aefa0f3"
+          },
+          "ruleId": "detekt.exceptions.TooGenericExceptionCaught"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 29,
+                  "endLine": 136,
+                  "startColumn": 27,
+                  "startLine": 136
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "1100de1502047a0449d78eed5728e4ef5a162e3e24288fb4a4b28ba73b666fcd",
+            "gauntlet/line/v1": "7d386686aae95d147cdec286f6b849c4efeeda31e94c49298b8592e7fcbdcbdc",
+            "gauntlet/symbol/v1": "c847cfc376d64d52911e405af33a8f9951f87672458022c1ea6be367768bf1fc",
+            "signature/v1": "f437f1401688e0af1ea7ab861140ae40037d22a7"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 48,
+                  "endLine": 143,
+                  "startColumn": 45,
+                  "startLine": 143
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "927f9df89e0d68cc1b967176280bb456586432acbf8741938ab71ff3d62a2a9f",
+            "gauntlet/line/v1": "651696075c95a2deb2c562ccd93a6f82553d52d977e5a9876e8accf1cec9d5a2",
+            "gauntlet/symbol/v1": "c847cfc376d64d52911e405af33a8f9951f87672458022c1ea6be367768bf1fc",
+            "signature/v1": "f5c8ba22741607c875a895e4c90b50716d9a8e8f"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 56,
+                  "endLine": 184,
+                  "startColumn": 54,
+                  "startLine": 184
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "ee276d62aea8c7f28b6e48310dcfe8d7c7e048d64b41748b5fcc2467a99c1688",
+            "gauntlet/line/v1": "347661436c3940eb29af27adf2751dcacc94fda1c73de61747fdfd54052de4e3",
+            "gauntlet/symbol/v1": "7f87b7efa76787ff8a08785266e9423733c1801fcbba70dbf7bdaf3f7cbf83f3",
+            "signature/v1": "f070bf9b6545d275c233dd0112491346949da265"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 28,
+                  "endLine": 190,
+                  "startColumn": 27,
+                  "startLine": 190
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "ae55da6f212d118244ade5b23af139f56e14553ebfc815ad3fd2762c292a176a",
+            "gauntlet/line/v1": "674e08adc00d3003ce53094e889c97be2d42b63d14082aded281925ff88c53aa",
+            "gauntlet/symbol/v1": "e22dcb8add96669acff5cef29a544f45f02ffb5dbfc63fa8037a355632f03e52",
+            "signature/v1": "c1dfd96eea8cc2b62785275bca38ac261256e278"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 65,
+                  "endLine": 190,
+                  "startColumn": 64,
+                  "startLine": 190
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "ae55da6f212d118244ade5b23af139f56e14553ebfc815ad3fd2762c292a176a",
+            "gauntlet/line/v1": "674e08adc00d3003ce53094e889c97be2d42b63d14082aded281925ff88c53aa",
+            "gauntlet/symbol/v1": "e22dcb8add96669acff5cef29a544f45f02ffb5dbfc63fa8037a355632f03e52",
+            "signature/v1": "ac3478d69a3c81fa62e60f5c3696165a4e5e6ac4"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 31,
+                  "endLine": 191,
+                  "startColumn": 30,
+                  "startLine": 191
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "fed08d15ae0d192a92a24d97db71c14d6205be3440b4dc87ceaa5da17ebaad21",
+            "gauntlet/line/v1": "ae373d7054e6fa5ff52a692c39af65a9afa7376aef058c714f7c31f65dfe3dec",
+            "gauntlet/symbol/v1": "e22dcb8add96669acff5cef29a544f45f02ffb5dbfc63fa8037a355632f03e52",
+            "signature/v1": "c1dfd96eea8cc2b62785275bca38ac261256e278"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 98,
+                  "endLine": 214,
+                  "startColumn": 96,
+                  "startLine": 214
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "9f635c362cea5d9c615f3ac968178dcbfea8d739b6233daed81e19292df7d66b",
+            "gauntlet/line/v1": "cfbe8e93f336afadd3aedb5fbe225035d3d96d0cc6e9ec29edea68778d11b9e9",
+            "gauntlet/symbol/v1": "56fcc5f09620dc81aa28e7dacdedf2256e2475ed263ea4ad3ad2495c34ce0026",
+            "signature/v1": "091a27f8b87aba411d8b9ceacf0a45d53fd2ac5b"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 39,
+                  "endLine": 217,
+                  "startColumn": 36,
+                  "startLine": 217
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "This expression contains a magic number. Consider defining it to a well named constant."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "14bedce4e3c948656fbf4865ef1ba5c6824d544ccd9ee2cef275612550cd8ef8",
+            "gauntlet/line/v1": "43dd988622a3a3a4baa44d7ea94cc0d2ac807a12ac2bf89a4348023474d964c0",
+            "gauntlet/symbol/v1": "56fcc5f09620dc81aa28e7dacdedf2256e2475ed263ea4ad3ad2495c34ce0026",
+            "signature/v1": "7d5b34bed9fddf22ac1ab0b82a2748fd800ad956"
+          },
+          "ruleId": "detekt.style.MagicNumber"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 145,
+                  "endLine": 28,
+                  "startColumn": 1,
+                  "startLine": 28
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "832cfc80b5234a3f6cd74f505e5bf3cab1a9d1a9ce0a3e72a474343ffd454e0e",
+            "gauntlet/line/v1": "63abfc9c1cc88eba13297dd50060961d58784e2ff9e0f95a09575e1d74b93b53",
+            "gauntlet/symbol/v1": "b51c4ba7b98a4b3fff0c9be06e16c68d0d5555920e8be24d310c082d9a07e514",
+            "signature/v1": "d5e25db3d7b44e344e1f6c3715eabd72c3d7d6a7"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 132,
+                  "endLine": 60,
+                  "startColumn": 1,
+                  "startLine": 60
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "bedcde79bdf7b4cc624c18c9d308a9e7dfc4aa59ec165621fe86c73dc635a1ad",
+            "gauntlet/line/v1": "f4dc12692ace71ffcc573269bbecc771808c89a9345c633a88c637010bd25296",
+            "gauntlet/symbol/v1": "4064f84654d34070db581350500f1ef72d5d382971af09a0e3c60adccfc52813",
+            "signature/v1": "e1596dfee1757d21001b306bf7716acecd7faf3f"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 141,
+                  "endLine": 101,
+                  "startColumn": 1,
+                  "startLine": 101
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "966b5ad608cb7396e988cfbf4b476ae957ea03c85a799e8f9c298ed3502e8fdb",
+            "gauntlet/line/v1": "7ac1a276efb37e02e647da2cdb95add33acfad3eb49d479434a359bb615b61e3",
+            "gauntlet/symbol/v1": "a867fb051095208cc6633522f20ac8cf3404d02e52626f2893e6e802434db531",
+            "signature/v1": "f9c6b31b7ddedf48a411025f2807a8c5ddaba9e5"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 126,
+                  "endLine": 116,
+                  "startColumn": 1,
+                  "startLine": 116
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "70e1c4818adbf6e237e8e576ceda7f50c0f1a54d0f15885d0044978f22642a56",
+            "gauntlet/line/v1": "04ad24841f6e00f61676975922f29f12b2d77e5db352a4258ee7383b26cfa689",
+            "gauntlet/symbol/v1": "414b3480afe56be202380a9cce38d04730b8a8e94818cb30db38a324236785c1",
+            "signature/v1": "3b09415e5fbbb8e1a66421c18485aa723b6e75a7"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 129,
+                  "endLine": 119,
+                  "startColumn": 1,
+                  "startLine": 119
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "5efdf19d6336e7c81c90ecd8ea0000748019b1439da843e47794a41fa6250d17",
+            "gauntlet/line/v1": "b1d47c97843f5c849b4308ec38f98e7d9a9d27c6d277cef2230e1be395041983",
+            "gauntlet/symbol/v1": "414b3480afe56be202380a9cce38d04730b8a8e94818cb30db38a324236785c1",
+            "signature/v1": "bb1603015a3c684b80eabc30c03120be92ef4fde"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 122,
+                  "endLine": 150,
+                  "startColumn": 1,
+                  "startLine": 150
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "084eed2c9f124463500f7e3d8d05a8b3690a5c27a665c533f4171783381011e2",
+            "gauntlet/line/v1": "6674979973685af8eca522322dd287d2fa73ddd1a56fcc1c2150d4651daa9639",
+            "gauntlet/symbol/v1": "4064f84654d34070db581350500f1ef72d5d382971af09a0e3c60adccfc52813",
+            "signature/v1": "4e7cf51decb46c6c6936bf04481183a1af13f4d5"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 125,
+                  "endLine": 168,
+                  "startColumn": 1,
+                  "startLine": 168
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "f598f2122e7ab8cabda2a0906b277485b51fe88d1cce746187644056151d4d16",
+            "gauntlet/line/v1": "bae3dcd9dd39176a93599fa2ab14f2559e12a5edc48960ea75be1c885341ce6e",
+            "gauntlet/symbol/v1": "36663381a2ebc6e78be50e5829114972f83f7b00b6d4752382934ae2684f8d64",
+            "signature/v1": "d21db4d825fe492e7b4c6e54c50b15453707e5bd"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 137,
+                  "endLine": 190,
+                  "startColumn": 1,
+                  "startLine": 190
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "57565b70384f46e015452a1e4fff33de5d8f5d7af634d238a9d2779fbb36f06c",
+            "gauntlet/line/v1": "adbb3f5ba75f8265ac0ac3ad4a06b593084337a429c5d8d0b8ab8bbc1d86e153",
+            "gauntlet/symbol/v1": "2eb0f3dece92941724d40b0383cfa1f24cfb2f05ff9a9b83067911e23fc025c0",
+            "signature/v1": "56e55bf5cf47fd2a9602d787c341280f2326fc62"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 147,
+                  "endLine": 207,
+                  "startColumn": 1,
+                  "startLine": 207
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "47761d924d30f4f0ed96dd9ea8c0bb6cd22dcacb4d369a6a8100aa5e67bb10e1",
+            "gauntlet/line/v1": "837d6811164a58824247d3b909eb1edc36061080748b77256f877141a794a665",
+            "gauntlet/symbol/v1": "f78f599e57b12e356a600d0b398ccd939408538a9bac3205dfade69f18b8f641",
+            "signature/v1": "e758393d10691a3cc02f39d812df8bcf180e7e29"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 128,
+                  "endLine": 211,
+                  "startColumn": 1,
+                  "startLine": 211
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "4b78c3496b5c167305805950fa28645b06568588f99d6f89e0393ff76fbaf0e4",
+            "gauntlet/line/v1": "b6b3b97bb65a79d4700908bc75a7d37e345949a9e01cca8ec7df2f7a6f2957b8",
+            "gauntlet/symbol/v1": "87b8c45020613b9bdd2d27d9208006351f36573a2801dd86113ab09c0d995098",
+            "signature/v1": "0d3573b36e8d8f6a7f5dab497e30b16d7bc687be"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/AccessSync.kt"
+                },
+                "region": {
+                  "endColumn": 134,
+                  "endLine": 214,
+                  "startColumn": 1,
+                  "startLine": 214
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "b4ef6b37c836fd904256316b33f6b06075c54090c7411e5bfb4ed45e76c937c8",
+            "gauntlet/line/v1": "85d9568ba9f5f1fa28b450818f919405bca533b2be42dbdb8055346e18509d4c",
+            "gauntlet/symbol/v1": "fb7ca34d48c7ad902207f3151d3a5bd555f8b9fcb9b5e0456d3df47c80bbcca2",
+            "signature/v1": "f76f1e1c10f594fef85e34e7a58f853ca0026398"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/LevelFile.kt"
+                },
+                "region": {
+                  "endColumn": 13,
+                  "endLine": 20,
+                  "startColumn": 9,
+                  "startLine": 20
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Function read has 3 return statements which exceeds the limit of 2."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "f2c913a0e3969f44d2b7e385489299006610f9272357b799a13264c077c3f7ae",
+            "gauntlet/line/v1": "908ec131ce2967cab8da12ca1690c94775ab263ad6c33107cd59563a945a36b7",
+            "gauntlet/symbol/v1": "85cae4a7b525b62293f438fdbbd3c3f98ed0051c4c899d6fe09990ae876a1a40",
+            "signature/v1": "a4c9ebc0b1cfc81cccc0bbff2db5bddd625d19de"
+          },
+          "ruleId": "detekt.style.ReturnCount"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/Main.kt"
+                },
+                "region": {
+                  "endColumn": 139,
+                  "endLine": 15,
+                  "startColumn": 1,
+                  "startLine": 15
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "c9fbf6e8fd79410196467043a9b7d7efbe918926e59c04995e3273fb433a34c4",
+            "gauntlet/line/v1": "e89e25c85a6644bee362f766922b76f732ab064a44d4c653f800cdb06c7a8cb9",
+            "gauntlet/symbol/v1": "6a42ccbd9280e00644abad19cdb31265f94b688bb23169d3ca7958dc61da16ba",
+            "signature/v1": "bb8248bbc84846b953f76d8287cdbbfc3fca0597"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/Relationships.kt"
+                },
+                "region": {
+                  "endColumn": 22,
+                  "endLine": 76,
+                  "startColumn": 17,
+                  "startLine": 76
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Function given has 3 return statements which exceeds the limit of 2."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "0402dfa20a77996f1a219ba8c8731b08597b907e78a5306f948f3602693a76d7",
+            "gauntlet/line/v1": "d9f3773a7327f81717c25875d3d4679ff9253b85d31045a5a61d2ea0635367e0",
+            "gauntlet/symbol/v1": "d36aa60dfcff674572a23359068ecd3f4053d53cfab6990ff8401caae61e357d",
+            "signature/v1": "50cd9880a210a70a7677401cbad518ef100aa82b"
+          },
+          "ruleId": "detekt.style.ReturnCount"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/Tracing.kt"
+                },
+                "region": {
+                  "endColumn": 31,
+                  "endLine": 61,
+                  "startColumn": 14,
+                  "startLine": 61
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "The caught exception is too generic. Prefer catching specific exceptions to the case that is currently handled."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "e021e4d2d7532e717600066f33226561bdf9b45cff2cb2bc8b06d0ff8f010721",
+            "gauntlet/line/v1": "0f762a893347657639d11ef9aefc35b4d6b3b80dcdc6a73c062dd8dd8103f5f1",
+            "gauntlet/symbol/v1": "ca02c3ade7411bd1ada2b2658d7f6019e273a530aac02b458a58504b6fd4e425",
+            "signature/v1": "eb14222cd6c20cfad70873353d198a853fb24394"
+          },
+          "ruleId": "detekt.exceptions.TooGenericExceptionCaught"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/Tracing.kt"
+                },
+                "region": {
+                  "endColumn": 25,
+                  "endLine": 21,
+                  "startColumn": 12,
+                  "startLine": 21
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "The file name 'Tracing' does not match the name of the single top-level declaration 'TraceSettings'."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "de2030f8e121b0c527f2da912fe1f6cb55e348dbe029a922077843f02de20624",
+            "gauntlet/line/v1": "da3b073961b62fb68eae099783d34479a4ba49e7adbb3c822b674fae5dd4b2ca",
+            "gauntlet/symbol/v1": "586746361bd5f268dc7f11e97c50c4c5c993df9c21cd6b8a0377706eda7ff294",
+            "signature/v1": "83efea3e57062290888a8050cce078672ee6ebfe"
+          },
+          "ruleId": "detekt.naming.MatchingDeclarationName"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/Tracing.kt"
+                },
+                "region": {
+                  "endColumn": 122,
+                  "endLine": 23,
+                  "startColumn": 1,
+                  "startLine": 23
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1/nosym": "1040ebda43f905236c2ec47ef02ac893fb7c77050c8fb88f42e65f97fa9f3207",
+            "gauntlet/line/v1": "6f3b91c8b9915223a71e43e76a9a52a521d722af1ce1c66e872b2820d3447a56",
+            "signature/v1": "8d6f504ff0bf0ffb2de8333a64c730a68417b750"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/Tracing.kt"
+                },
+                "region": {
+                  "endColumn": 137,
+                  "endLine": 26,
+                  "startColumn": 1,
+                  "startLine": 26
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "7d46d38b1d6b97a5ee114f20a8af5bef81adec113deefd776249381cf0d42f21",
+            "gauntlet/line/v1": "b00fdd3ff26d0bff9f0456f0e265e6624f65e633c90bbcb4d1ceb30215237866",
+            "gauntlet/symbol/v1": "526dbe6f4b4ee3030d99306696d8a5068b460838d794208488b9ebb6d371540a",
+            "signature/v1": "3a52ce780950d4d969792a2559cd519d7ee8c727"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/main/kotlin/bank/access/sync/Tracing.kt"
+                },
+                "region": {
+                  "endColumn": 155,
+                  "endLine": 30,
+                  "startColumn": 1,
+                  "startLine": 30
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "edc18f2b3bf9d79e601a1f3bb646998f4f7ce147baf71306c64d0fd61845782a",
+            "gauntlet/line/v1": "27592dc7fbf6e05a85f70f62a73976cdf30b98a1353a856d9e8cbf2d17d91a16",
+            "gauntlet/symbol/v1": "526dbe6f4b4ee3030d99306696d8a5068b460838d794208488b9ebb6d371540a",
+            "signature/v1": "1153303b50093cf7492aacdeeb2284d338619d76"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/LogJsonSpec.kt"
+                },
+                "region": {
+                  "endColumn": 131,
+                  "endLine": 21,
+                  "startColumn": 1,
+                  "startLine": 21
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "606d439ea94175481c65966e2db1f5384f49c557e8340955556ade85871ab2c4",
+            "gauntlet/line/v1": "4e50584b703500405a85d6d9c288d8152c11075416c9e5f77d7713e9f9fa81ec",
+            "gauntlet/symbol/v1": "05f67eee1e3ba24cace63303432a8abce594cde9be723e4a6954d770553319b4",
+            "signature/v1": "d9dd40951e011197caca2a038c25711b81d97a57"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/LogJsonSpec.kt"
+                },
+                "region": {
+                  "endColumn": 141,
+                  "endLine": 29,
+                  "startColumn": 1,
+                  "startLine": 29
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "a5e6992ccad7aa32c31373031e9663d31f1f24fcd0ea23ed89fee1e4598395f6",
+            "gauntlet/line/v1": "bf50fd7bff70ea40d48bd0cd2eb248117000159fc7284a58d6ea9355409cab18",
+            "gauntlet/symbol/v1": "ed7e4de4026c369c068b36eee49702654350cead9d4c54e2527bd79b6e45bb60",
+            "signature/v1": "334f0766b9cf93718a188dce2b1cc2006721ed71"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/SyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 124,
+                  "endLine": 42,
+                  "startColumn": 1,
+                  "startLine": 42
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "9d503b9c6ffaa813f37d5248330015476509bc319e8d80067599e980f702abdd",
+            "gauntlet/line/v1": "08deb97646f43153f14ab20f1fe83adef7cb727dcb69ba58675fecf7bda73c7e",
+            "gauntlet/symbol/v1": "7b33af7132453db944bc39b149f50339c9f852481171c03d4c0e110a791cba33",
+            "signature/v1": "253ca7bf865330e177477ed7f71e802f89519ad9"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/SyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 143,
+                  "endLine": 71,
+                  "startColumn": 1,
+                  "startLine": 71
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "c501a5e4ad323cf95dab96114436d103c8885254628a8c82be564d9af357381f",
+            "gauntlet/line/v1": "30a9867359531ff56b645e2249ab3d9181a76616029d1262a9b810f6a83f14af",
+            "gauntlet/symbol/v1": "8d045232a14e0c2d2077ec5cc5ed181af6995a98cde2c4292296430394e63fbf",
+            "signature/v1": "b527a4d7c1d4aa977967cb659a8b88c651b77aeb"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/SyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 154,
+                  "endLine": 102,
+                  "startColumn": 1,
+                  "startLine": 102
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "34c2875f6f7b5cd4d86a8e60cbb4d04a85f6441cea69afc528f2e8b826f29997",
+            "gauntlet/line/v1": "4c23afe84089fa0760c975096496583c9fc510eca161ed4824688dc64c68ad47",
+            "gauntlet/symbol/v1": "43e6ba7618ebf8d9df88de040786384daa0557f18df12fada6251a5093fd05c6",
+            "signature/v1": "5097a41747a0522a1138d41f6095a1cdc32c30b0"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/SyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 135,
+                  "endLine": 116,
+                  "startColumn": 1,
+                  "startLine": 116
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "93d111230bb095a2d0f7d68a3a303596342273c9d0c1850dd88e6e8574826010",
+            "gauntlet/line/v1": "eeda393134fe5669d32a308f0b7815c326b91545d3d1e4a020dd694f3c71a3bd",
+            "gauntlet/symbol/v1": "f318e95daed68a146c47a2de6a98e1beaf4d54c2c783af2c3c25dd1e02f74c36",
+            "signature/v1": "5097a41747a0522a1138d41f6095a1cdc32c30b0"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/SyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 148,
+                  "endLine": 119,
+                  "startColumn": 1,
+                  "startLine": 119
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "8f0fbeec3d79be0671c3b68e15dab81171bcf82805a81261acb1f683ddde0ca5",
+            "gauntlet/line/v1": "45adc6762b42c49039e9dc85e0071ff156d7f6e5c195fc97ed2c9a5e35a14383",
+            "gauntlet/symbol/v1": "f318e95daed68a146c47a2de6a98e1beaf4d54c2c783af2c3c25dd1e02f74c36",
+            "signature/v1": "4bd6c1f04fd1edd4df8c933dfd9f7f2353e6276f"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/SyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 128,
+                  "endLine": 125,
+                  "startColumn": 1,
+                  "startLine": 125
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "7966115dbcacb2537ef52a923122c4d28f4158f23cf3b84c592768172eba4a9f",
+            "gauntlet/line/v1": "522996a8cb295cbc813fbc19a7ef95737dd9cd5aaf29b50762744177a2e4a6fc",
+            "gauntlet/symbol/v1": "40bbfcbe60105e5c2e7882c4a101374d05dc71c5df1061c07b3c89a311ee5aac",
+            "signature/v1": "c2c204e3f5f7d0d637eab252e623a0c976878a23"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/SyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 129,
+                  "endLine": 144,
+                  "startColumn": 1,
+                  "startLine": 144
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "d12417f80719c59c091537162a886551b2372e8bd414c4a42d44dca4460bae09",
+            "gauntlet/line/v1": "655c74f7633ffe5dfd5be3a87ac907b1b49ea509a9a1ee00bef28c31d6ca5e39",
+            "gauntlet/symbol/v1": "40bbfcbe60105e5c2e7882c4a101374d05dc71c5df1061c07b3c89a311ee5aac",
+            "signature/v1": "b292282102d77c204a041599db3d0d1b0cef3801"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/SyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 135,
+                  "endLine": 169,
+                  "startColumn": 1,
+                  "startLine": 169
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "6571059fdba92ff61ebce83d8ce9c1d9929d10ebcd62337cecdc3198fc7fc088",
+            "gauntlet/line/v1": "7f599d44d80532b6d1ceaa4142332cc3b2fe1c12e5047c07ff97c1c2ec73092b",
+            "gauntlet/symbol/v1": "766d15a714e6a4b79110abb24344d4047545dec4f0e70831078eb71f207abf45",
+            "signature/v1": "fd89be0c53eb3e4c38412fdf90870d4601c65120"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/SyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 144,
+                  "endLine": 177,
+                  "startColumn": 1,
+                  "startLine": 177
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "663d218663b40939f6959ffd5ac46f0b7f60c2c47ccc0b9f9864998964b0f288",
+            "gauntlet/line/v1": "69c67a927282954515baabb523adea2d3249449e431825c38ec4fdba929898e5",
+            "gauntlet/symbol/v1": "766d15a714e6a4b79110abb24344d4047545dec4f0e70831078eb71f207abf45",
+            "signature/v1": "30ea3a79af894451b8847be5545510c254fd00f7"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/TracedSyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 141,
+                  "endLine": 26,
+                  "startColumn": 1,
+                  "startLine": 26
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "339ea60de72b3ac417878f8053647e295475c2f9f8fb024b346099cc80a6b8e6",
+            "gauntlet/line/v1": "dc18b191e2ab653df1ac924bb4bce274b98aab21c2d860cc7365c997866c2a52",
+            "gauntlet/symbol/v1": "51496d7d8796f3efa0d75ca5cb05817973855d62c0e428aa6e8da6723bc06bcd",
+            "signature/v1": "c42b2bffb6d8e9d70fe57c0d85667b86c399ce6e"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/TracedSyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 172,
+                  "endLine": 44,
+                  "startColumn": 1,
+                  "startLine": 44
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "e3315d3038075f06f02d3d4804ce280e50784f90685a7a01b980804c193db8c5",
+            "gauntlet/line/v1": "c005641db738ec57083451103eb11b3d45ffcc9e448947028ba40b5e870dc9ed",
+            "gauntlet/symbol/v1": "5f7e7877f0bae88b6d32928992806930d5808b6c3c4497027e634e9066223ba1",
+            "signature/v1": "73eceab2791d3906228d62f5925f61e046e0be70"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/TracedSyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 125,
+                  "endLine": 52,
+                  "startColumn": 1,
+                  "startLine": 52
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "170c8ced00a42d50d1dca727b3ea537961a617dc95012f8fb2e7b9867620de60",
+            "gauntlet/line/v1": "129e6865aa359e9f5bd085d4cea6fc580c8872eced7e443a8ec5d04eb94e6313",
+            "gauntlet/symbol/v1": "5f7e7877f0bae88b6d32928992806930d5808b6c3c4497027e634e9066223ba1",
+            "signature/v1": "6cc24d44e6d337976bd195ce8e073a18f824186d"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/TracedSyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 128,
+                  "endLine": 57,
+                  "startColumn": 1,
+                  "startLine": 57
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "1a848f4112af147bb29a00f793ef9d386a79acc7e71559faca0162d6acc52ad6",
+            "gauntlet/line/v1": "857a82dd427e4dfe0e552efc4a9555170ffb3ea3dd069e2e8ab25cfd7337acaf",
+            "gauntlet/symbol/v1": "5f7e7877f0bae88b6d32928992806930d5808b6c3c4497027e634e9066223ba1",
+            "signature/v1": "eb29c590578eaa09b71c3a768eeffd0533a95cf3"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        },
+        {
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "bank-access/sync/src/test/kotlin/bank/access/sync/TracedSyncSpec.kt"
+                },
+                "region": {
+                  "endColumn": 167,
+                  "endLine": 58,
+                  "startColumn": 1,
+                  "startLine": 58
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "Line detected, which is longer than the defined maximum line length in the code style."
+          },
+          "partialFingerprints": {
+            "gauntlet/ctx/v1": "84599ad9463c12f4ccf56172682448ddbea0ebea248a13fc7385def835d7773d",
+            "gauntlet/line/v1": "e654487c686969ebbac50692d3de78cd19741caf335efe7b79d11ac9c1bf26e7",
+            "gauntlet/symbol/v1": "5f7e7877f0bae88b6d32928992806930d5808b6c3c4497027e634e9066223ba1",
+            "signature/v1": "73eceab2791d3906228d62f5925f61e046e0be70"
+          },
+          "ruleId": "detekt.style.MaxLineLength"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "detekt"
+        }
+      }
+    },
+    {
+      "results": [],
+      "tool": {
+        "driver": {
+          "name": "kotlin-arch"
+        }
+      }
+    },
+    {
+      "results": [],
+      "tool": {
+        "driver": {
+          "name": "kotlin-rules"
+        }
+      }
+    },
+    {
+      "results": [],
+      "tool": {
+        "driver": {
+          "name": "scala-arch"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}
