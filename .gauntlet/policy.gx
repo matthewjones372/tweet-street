@@ -1,0 +1,91 @@
+// Drafted by `gauntlet init` from the jvm and scala pack defaults and this repository's layout,
+// then set up with its owner: zones, layers, coverage, lint and mutation.
+gauntlet "tweet-street"
+use jvm in "bank-access", "bank-approvals", "lark-bank", "lark-bank/events", scala in "bank-checks"
+mode enforce // failing gates block the change
+owners @matthewjones372
+
+protect {
+  tests    "bank-access/**/src/test/**", "bank-approvals/**/src/test/**", "bank-checks/**/src/test/**", "lark-bank/**/src/test/**"
+  fixtures "bank-access/**/src/test/resources/**", "bank-access/**/src/testFixtures/**", "bank-approvals/**/src/test/resources/**", "bank-checks/**/src/test/resources/**", "lark-bank/**/src/test/resources/**"
+  config   "bank-access/*.gradle.kts", "bank-access/**/*.gradle.kts", "bank-access/gradle/**", "bank-approvals/*.gradle.kts", "bank-approvals/**/*.gradle.kts", "bank-approvals/gradle/**", "bank-checks/*.sbt", "bank-checks/project/**", "lark-bank/*.gradle.kts", "lark-bank/**/*.gradle.kts", "lark-bank/gradle/**", "lark-bank/events/*.gradle.kts", ".github/workflows/**"
+           "**/gradle.properties", "bank-checks/.scalafmt.conf", "bank-checks/stryker4s.conf"
+}
+
+// The ledger: Money, accounts, transfers and the read models that hold balances, and the checks that judge them.
+zone money {
+  paths "lark-bank/domain/src/main/**"
+        "lark-bank/app/src/main/**/Transfers.kt", "lark-bank/app/src/main/**/ShardedBank.kt", "lark-bank/app/src/main/**/Accounts.kt"
+        "lark-bank/app/src/main/**/Projections.kt", "lark-bank/app/src/main/**/ReadModels.kt"
+        "bank-checks/policy/src/main/**/domain/**", "bank-checks/screening/src/main/**/domain/**"
+        "bank-checks/bank-events/src/main/**"
+  owner @matthewjones372
+  rule kotlin.no-floating-money
+}
+
+// Who may do what: callers, identity, OIDC, the FGA model and its sync, sessions, and the config that holds secrets.
+zone auth {
+  paths "lark-bank/api/src/main/**/Caller.kt", "lark-bank/api/src/main/**/Looks.kt"
+        "lark-bank/app/src/main/**/Identity.kt", "lark-bank/app/src/main/**/Access.kt", "lark-bank/app/src/main/**/AccessLogging.kt"
+        "lark-bank/app/src/main/**/Auditing.kt", "lark-bank/app/src/main/**/Shadowing.kt"
+        "bank-approvals/api/src/main/**/Caller.kt", "bank-approvals/app/src/main/**/Identity.kt", "bank-approvals/policies/**"
+        "bank-access/model/**", "bank-access/*/src/main/**"
+        "bank-checks/access/src/main/**", "bank-checks/platform/src/main/**/KafkaSignIn.scala"
+        "**/src/main/resources/application.conf", "lark-bank/deploy/**"
+  owner @matthewjones372
+}
+
+// What other systems and the journal depend on: events, the journal schema, HTTP surfaces and the generated client.
+zone contracts {
+  paths "lark-bank/events/src/main/proto/**", "lark-bank/events/buf.yaml"
+        "lark-bank/protocol/schema/**"
+        "bank-checks/openapi.json", "bank-checks/buf.yaml", "bank-checks/monitoring/src/main/resources/checks/flags/**"
+        "lark-bank/api/src/main/**/Endpoints.kt", "bank-approvals/api/src/main/**/Endpoints.kt"
+        "lark-bank/api/src/main/**/screening/**"
+  owner @matthewjones372
+}
+
+// Schemas and migrations, including the tables that hold personal data (access_log, audit_export).
+zone data {
+  paths "lark-bank/app/src/main/resources/db/**"
+        "bank-approvals/app/src/main/resources/db/**"
+        "bank-checks/*/src/main/resources/db/**"
+  owner @matthewjones372
+}
+
+// Kotlin builds: domain <- protocol, api <- app. bank-checks contexts: domain <- service <- adapters.
+arch {
+  module domain   must not depend on protocol, api, app, service, adapters, platform
+  module protocol must not depend on api, app
+  module api      must not depend on app
+  module service  must not depend on adapters, platform
+}
+
+suites {
+  unit "**/src/test/**"
+}
+
+// Ratchets keep each file from getting worse; the floors apply to new and changed lines only, so old code doesn't block a change.
+gates {
+  fast   { build, lint ratchet, arch }
+  verify {
+    unit
+    coverage ratchet >= 80% on changed
+  }
+  money {
+    coverage >= 90% on changed in zone money
+    mutation ratchet >= 80% on changed in zone money
+  }
+}
+
+on fail coverage { fix "Add tests for the uncovered changed lines listed in the report." }
+on fail mutation { fix "Kill the surviving mutants listed in the report by adding assertions. Do not delete or weaken tests." }
+
+predicate small = diff < 150 lines and no zone touched
+
+review {
+  owner  when zone touched
+  review when protected changed
+  review when dependency added
+  auto   when small and all gates pass
+}

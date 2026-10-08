@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "gauntlet": {
+      "type": "stdio",
+      "command": "gauntlet",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}
