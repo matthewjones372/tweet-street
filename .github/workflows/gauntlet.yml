@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GAUNTLET_URL: "https://github.com/matthewjones372/gauntlet/releases/download/v0.1.0-rc.16/gauntlet-linux-x64"
+  GAUNTLET_URL: "https://github.com/matthewjones372/gauntlet/releases/download/v0.1.0-rc.17/gauntlet-linux-x64"
 
 jobs:
   evidence:
@@ -39,28 +39,47 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Install Gauntlet 0.1.0-rc.17
+        run: |
+          curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
+          curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/gauntlet"
+      # A change to comments or documentation only has nothing to build (ADR 0023): skip the tools and setup too.
+      - name: Does the change need building?
+        id: needs
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: echo "build=$("$RUNNER_TEMP/gauntlet" needs-build --policy-ref "$BASE" --head "$HEAD")" >> "$GITHUB_OUTPUT"
       - name: Set up Java
+        if: ${{ steps.needs.outputs.build != 'false' }}
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: "25"
       - name: Set up Gradle
+        if: ${{ steps.needs.outputs.build != 'false' }}
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           cache-disabled: true
       - name: Set up sbt
+        if: ${{ steps.needs.outputs.build != 'false' }}
         uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
-      - name: Install Gauntlet 0.1.0-rc.16
-        run: |
-          curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
-          curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
-          chmod +x "$RUNNER_TEMP/gauntlet"
+      # The project's own CI setup, from .gauntlet/ci.yml, so its builds build here as in its CI.
+      - {"uses":"cachix/install-nix-action@v31","if":"${{ steps.needs.outputs.build != 'false' }}"}
+      - {"id":"pins","run":"pin() { nix eval --impure --raw --expr \"(builtins.fromJSON (builtins.readFile ./lark-bank/flake.lock)).nodes.$1.locked.rev\"; }\necho \"lark=$(pin lark)\" >> \"$GITHUB_OUTPUT\"\necho \"pelican=$(pin pelican)\" >> \"$GITHUB_OUTPUT\"\n","if":"${{ steps.needs.outputs.build != 'false' }}"}
+      - {"uses":"actions/checkout@v5","with":{"repository":"matthewjones372/lark","ref":"${{ steps.pins.outputs.lark }}","path":"deps/lark"},"if":"${{ steps.needs.outputs.build != 'false' }}"}
+      - {"uses":"actions/checkout@v5","with":{"repository":"matthewjones372/pelican","ref":"${{ steps.pins.outputs.pelican }}","path":"deps/pelican"},"if":"${{ steps.needs.outputs.build != 'false' }}"}
+      - {"uses":"actions/checkout@v5","with":{"repository":"matthewjones372/verdict","path":"deps/verdict"},"if":"${{ steps.needs.outputs.build != 'false' }}"}
+      - {"name":"verdict, lark-bank-events and lark-bank-issuer, published locally","run":"(cd bank-checks && nix develop -c bash -c 'cd ../deps/verdict && sbt -batch publishLocal')\n(cd lark-bank && nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican \\\n  :events:publishToMavenLocal :issuer:publishToMavenLocal)\n","if":"${{ steps.needs.outputs.build != 'false' }}"}
+      - {"name":"lark-bank-events and lark-bank-issuer, published locally","working-directory":"lark-bank","run":"nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican \\\n  :events:publishToMavenLocal :issuer:publishToMavenLocal\n","if":"${{ steps.needs.outputs.build != 'false' }}"}
+      - {"name":"lark-bank-events, published locally","working-directory":"lark-bank","run":"nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican :events:publishToMavenLocal","if":"${{ steps.needs.outputs.build != 'false' }}"}
       - name: Check the change with the base commit's policy
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          "$RUNNER_TEMP/gauntlet" check --policy-ref "$BASE" --head "$HEAD" --out gauntlet-out --no-record || true
+          "$RUNNER_TEMP/gauntlet" check --policy-ref "$BASE" --head "$HEAD" --out gauntlet-out --no-record --ci || true
           # When the change edits .gauntlet/, prove the proposed policy still catches tampering.
           if ! git diff --quiet "$BASE" "$HEAD" -- .gauntlet; then
             "$RUNNER_TEMP/gauntlet" selftest --base "$HEAD" --json > gauntlet-out/selftest.json || true
@@ -96,7 +115,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
-      - name: Install Gauntlet 0.1.0-rc.16
+      - name: Install Gauntlet 0.1.0-rc.17
         run: |
           curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
           curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
