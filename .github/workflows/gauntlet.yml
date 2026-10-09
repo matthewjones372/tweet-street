@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GAUNTLET_URL: "https://github.com/matthewjones372/gauntlet/releases/download/v0.1.0-rc.18/gauntlet-linux-x64"
+  GAUNTLET_URL: "https://github.com/matthewjones372/gauntlet/releases/download/v0.1.0-rc.19/gauntlet-linux-x64"
 
 jobs:
   evidence:
@@ -32,6 +32,7 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
+      actions: read
     steps:
       - name: Check out the change, without credentials
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -39,7 +40,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Install Gauntlet 0.1.0-rc.18
+      - name: Install Gauntlet 0.1.0-rc.19
         run: |
           curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
           curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
@@ -74,12 +75,34 @@ jobs:
       - {"name":"verdict, lark-bank-events and lark-bank-issuer, published locally","run":"(cd bank-checks && nix develop -c bash -c 'cd ../deps/verdict && sbt -batch publishLocal')\n(cd lark-bank && nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican \\\n  :events:publishToMavenLocal :issuer:publishToMavenLocal)\n","if":"${{ steps.needs.outputs.build != 'false' }}"}
       - {"name":"lark-bank-events and lark-bank-issuer, published locally","working-directory":"lark-bank","run":"nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican \\\n  :events:publishToMavenLocal :issuer:publishToMavenLocal\n","if":"${{ steps.needs.outputs.build != 'false' }}"}
       - {"name":"lark-bank-events, published locally","working-directory":"lark-bank","run":"nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican :events:publishToMavenLocal","if":"${{ steps.needs.outputs.build != 'false' }}"}
+      # What the project's own CI already ran isn't run again (ADR 0024): wait for its run on this commit and take its reports.
+      - name: Take the project's CI reports for this commit
+        id: ci
+        if: ${{ steps.needs.outputs.build != 'false' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          mkdir -p ci-reports
+          for i in $(seq 1 120); do
+            runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$HEAD&per_page=50" --jq '[.workflow_runs[] | select(.name != "gauntlet")]')
+            if [ "$(echo "$runs" | jq 'length')" -gt 0 ] && [ "$(echo "$runs" | jq '[.[] | select(.status != "completed")] | length')" = "0" ]; then break; fi
+            sleep 30
+          done
+          for id in $(echo "$runs" | jq -r '.[].id'); do
+            for name in $(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/artifacts" --jq '.artifacts[] | select(.name | startswith("gauntlet-reports-")) | .name'); do
+              gh run download "$id" --repo "$GITHUB_REPOSITORY" --name "$name" --dir "ci-reports/$name" || true
+            done
+          done
+          echo "source=$(echo "$runs" | jq -r '.[0].html_url // ""')" >> "$GITHUB_OUTPUT"
       - name: Check the change with the base commit's policy
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
+          CI_SOURCE: ${{ steps.ci.outputs.source }}
         run: |
-          "$RUNNER_TEMP/gauntlet" check --policy-ref "$BASE" --head "$HEAD" --out gauntlet-out --no-record --ci || true
+          reports=""; if [ -n "$(ls -A ci-reports 2>/dev/null)" ]; then reports="--ci-reports ci-reports --ci-source $CI_SOURCE"; fi
+          "$RUNNER_TEMP/gauntlet" check --policy-ref "$BASE" --head "$HEAD" --out gauntlet-out --no-record --ci $reports || true
           # When the change edits .gauntlet/, prove the proposed policy still catches tampering.
           if ! git diff --quiet "$BASE" "$HEAD" -- .gauntlet; then
             "$RUNNER_TEMP/gauntlet" selftest --base "$HEAD" --json > gauntlet-out/selftest.json || true
@@ -115,7 +138,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
-      - name: Install Gauntlet 0.1.0-rc.18
+      - name: Install Gauntlet 0.1.0-rc.19
         run: |
           curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
           curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
