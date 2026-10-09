@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GAUNTLET_URL: "https://github.com/matthewjones372/gauntlet/releases/download/v0.1.0-rc.19/gauntlet-linux-x64"
+  GAUNTLET_URL: "https://github.com/matthewjones372/gauntlet/releases/download/v0.1.0-rc.20/gauntlet-linux-x64"
 
 jobs:
   evidence:
@@ -40,7 +40,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Install Gauntlet 0.1.0-rc.19
+      - name: Install Gauntlet 0.1.0-rc.20
         run: |
           curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
           curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
@@ -138,7 +138,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
-      - name: Install Gauntlet 0.1.0-rc.19
+      - name: Install Gauntlet 0.1.0-rc.20
         run: |
           curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
           curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
