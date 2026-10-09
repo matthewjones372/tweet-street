@@ -14,7 +14,7 @@ on:
   pull_request_review:
     types: [submitted, dismissed]
   issue_comment:
-    types: [created]
+    types: [created, edited]
 
 permissions: {}
 
@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GAUNTLET_URL: "https://github.com/matthewjones372/gauntlet/releases/download/v0.1.0-rc.14/gauntlet-linux-x64"
+  GAUNTLET_URL: "https://github.com/matthewjones372/gauntlet/releases/download/v0.1.0-rc.16/gauntlet-linux-x64"
 
 jobs:
   evidence:
@@ -50,37 +50,7 @@ jobs:
           cache-disabled: true
       - name: Set up sbt
         uses: sbt/setup-sbt@6158cb0903b8ceeae04f830055f3155e1b6a5ad7 # v1.5.11
-      # As build.yml: Lark and Pelican at the revisions lark-bank/flake.lock pins, verdict from its main, buf for the
-      # schema checks, and the bank's events and test issuer published locally for the services that read them.
-      - name: Pin Lark and Pelican
-        id: pins
-        run: |
-          echo "lark=$(jq -r .nodes.lark.locked.rev lark-bank/flake.lock)" >> "$GITHUB_OUTPUT"
-          echo "pelican=$(jq -r .nodes.pelican.locked.rev lark-bank/flake.lock)" >> "$GITHUB_OUTPUT"
-      - name: Check out Lark
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { repository: matthewjones372/lark, ref: "${{ steps.pins.outputs.lark }}", path: deps/lark, persist-credentials: false }
-      - name: Check out Pelican
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { repository: matthewjones372/pelican, ref: "${{ steps.pins.outputs.pelican }}", path: deps/pelican, persist-credentials: false }
-      - name: Check out verdict
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { repository: matthewjones372/verdict, path: deps/verdict, persist-credentials: false }
-      - name: Install buf 1.73.0
-        run: |
-          mkdir -p "$RUNNER_TEMP/bin"
-          curl -fsSL "https://github.com/bufbuild/buf/releases/download/v1.73.0/buf-Linux-x86_64" -o "$RUNNER_TEMP/bin/buf"
-          echo "8f2986298ad08f0cc1bf999b9797b7c383adf32d7edf0f73d6f1e1a701baeac1  $RUNNER_TEMP/bin/buf" | sha256sum -c -
-          chmod +x "$RUNNER_TEMP/bin/buf"
-          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-      - name: Point Gradle at the checkouts, and publish verdict, lark-bank-events and lark-bank-issuer locally
-        run: |
-          mkdir -p ~/.gradle
-          printf 'larkSource=%s\npelicanSource=%s\naccessSource=%s\n' \
-            "$GITHUB_WORKSPACE/deps/lark" "$GITHUB_WORKSPACE/deps/pelican" "$GITHUB_WORKSPACE/bank-access" >> ~/.gradle/gradle.properties
-          (cd deps/verdict && sbt -batch publishLocal)
-          (cd lark-bank && ./gradlew :events:publishToMavenLocal :issuer:publishToMavenLocal)
-      - name: Install Gauntlet 0.1.0-rc.14
+      - name: Install Gauntlet 0.1.0-rc.16
         run: |
           curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
           curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
@@ -104,8 +74,9 @@ jobs:
 
   status:
     needs: [evidence]
-    # Runs again when an owner comments `/gauntlet approve <commit>` (an author can't approve their own pull request).
-    if: always() && (github.event_name != 'issue_comment' || (github.event.issue.pull_request && startsWith(github.event.comment.body, '/gauntlet approve')))
+    # Runs again when an owner comments `/gauntlet approve <commit>` or ticks the box in Gauntlet's report
+    # (an author can't approve their own pull request).
+    if: always() && (github.event_name != 'issue_comment' || (github.event.issue.pull_request && (startsWith(github.event.comment.body, '/gauntlet approve') || (github.event.action == 'edited' && startsWith(github.event.comment.body, '<!-- gauntlet-report -->') && contains(github.event.comment.body, '- [x] **Approve this change**')))))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -125,7 +96,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
-      - name: Install Gauntlet 0.1.0-rc.14
+      - name: Install Gauntlet 0.1.0-rc.16
         run: |
           curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
           curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
@@ -149,9 +120,15 @@ jobs:
       - name: Fetch reviews and owner team members
         env:
           TEAMS_TOKEN: ${{ secrets.GAUNTLET_TEAMS_TOKEN }}
+          TICKED_BY: ${{ github.event.sender.login }}
+          TICKED_BODY: ${{ github.event.comment.body }}
         run: |
           gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" --jq '.[] | {user: .user.login, state: .state, commitId: .commit_id}' | jq -s . > reviews.json
           gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --jq '.[] | {user: .user.login, body: .body}' | jq -s . > comments.json
+          # A ticked box in Gauntlet's report counts as from whoever ticked it; only an owner's counts.
+          if [ "${{ github.event_name }}" = "issue_comment" ] && [ "${{ github.event.action }}" = "edited" ]; then
+            jq --arg u "$TICKED_BY" --arg b "$TICKED_BODY" '. + [{user: $u, body: $b}]' comments.json > comments.next && mv comments.next comments.json
+          fi
           echo '{}' > teams.json
           # Team owners can only be checked with a token that may read org teams.
           if [ -n "$TEAMS_TOKEN" ]; then
