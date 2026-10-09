@@ -1,0 +1,41 @@
+# How Gauntlet's GitHub check builds this project, drafted from its own CI workflows by
+# `gauntlet connect github`. `setup` runs before the checks; `builds` says how each build
+# runs its tool there. Locally Gauntlet builds as usual. It's protected: an owner changes it,
+# then runs `gauntlet connect github` again.
+setup: 
+  - uses: cachix/install-nix-action@v31
+  - id: pins
+    run: "pin() { nix eval --impure --raw --expr \"(builtins.fromJSON (builtins.readFile ./lark-bank/flake.lock)).nodes.$1.locked.rev\"; }\necho \"lark=$(pin lark)\" >> \"$GITHUB_OUTPUT\"\necho \"pelican=$(pin pelican)\" >> \"$GITHUB_OUTPUT\"\n"
+  - uses: actions/checkout@v5
+    with: 
+      repository: matthewjones372/lark
+      ref: "${{ steps.pins.outputs.lark }}"
+      path: deps/lark
+  - uses: actions/checkout@v5
+    with: 
+      repository: matthewjones372/pelican
+      ref: "${{ steps.pins.outputs.pelican }}"
+      path: deps/pelican
+  - uses: actions/checkout@v5
+    with: 
+      repository: matthewjones372/verdict
+      path: deps/verdict
+  - name: "verdict, lark-bank-events and lark-bank-issuer, published locally"
+    run: "(cd bank-checks && nix develop -c bash -c 'cd ../deps/verdict && sbt -batch publishLocal')\n(cd lark-bank && nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican \\\n  :events:publishToMavenLocal :issuer:publishToMavenLocal)\n"
+  - name: "lark-bank-events and lark-bank-issuer, published locally"
+    working-directory: lark-bank
+    run: "nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican \\\n  :events:publishToMavenLocal :issuer:publishToMavenLocal\n"
+  - name: "lark-bank-events, published locally"
+    working-directory: lark-bank
+    run: "nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican :events:publishToMavenLocal"
+builds: 
+  lark-bank: 
+    wrap: "nix develop .#ci -c"
+    tool: "./gradlew -PlarkSource=$GITHUB_WORKSPACE/deps/lark -PpelicanSource=$GITHUB_WORKSPACE/deps/pelican -PaccessSource=$GITHUB_WORKSPACE/bank-access -Porg.gradle.java.installations.fromEnv=JDK25,JDK21 -Porg.gradle.java.installations.auto-download=false"
+  bank-checks: 
+    wrap: nix develop -c
+  bank-approvals: 
+    wrap: "nix develop .#ci -c"
+    tool: ./gradlew -PlarkSource=$GITHUB_WORKSPACE/deps/lark -PpelicanSource=$GITHUB_WORKSPACE/deps/pelican
+  bank-access: 
+    wrap: nix develop -c
