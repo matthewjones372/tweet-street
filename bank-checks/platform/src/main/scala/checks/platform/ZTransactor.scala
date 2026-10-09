@@ -20,3 +20,5 @@ object ZTransactor:
 
   val layer: URLayer[DataSource, ZTransactor] =
     ZLayer.fromFunction((dataSource: DataSource) => ZTransactor(dataSource))
+
+// Checked by Gauntlet.
