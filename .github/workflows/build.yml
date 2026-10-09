@@ -35,7 +35,20 @@ jobs:
         run: |
           nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican -PaccessSource=../bank-access \
             -Porg.gradle.java.installations.fromEnv=JDK25,JDK21 -Porg.gradle.java.installations.auto-download=false \
-            build :events:build --stacktrace
+            build :events:build --stacktrace koverXmlReport
+      - name: Keep the test and coverage reports for Gauntlet
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/gauntlet-reports"
+          find . \( -path '*/build/test-results/*.xml' -o -path '*/build/reports/kover/*.xml' -o -path '*/build/reports/jacoco/*.xml' -o -path '*/target/test-reports/*.xml' -o -path '*/coverage-report/cobertura.xml' \) -not -path './.git/*' | while read -r f; do mkdir -p "$RUNNER_TEMP/gauntlet-reports/$(dirname "$f")"; cp "$f" "$RUNNER_TEMP/gauntlet-reports/$f"; done
+      - name: Upload the reports for Gauntlet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gauntlet-reports-lark-bank
+          path: ${{ runner.temp }}/gauntlet-reports
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Test reports
         if: failure()
         uses: actions/upload-artifact@v4
@@ -69,7 +82,20 @@ jobs:
             :events:publishToMavenLocal :issuer:publishToMavenLocal)
       - name: Build and test
         working-directory: bank-checks
-        run: nix develop -c sbt -batch compile test scalafmtCheckAll
+        run: nix develop -c sbt -batch compile coverage test coverageReport scalafmtCheckAll
+      - name: Keep the test and coverage reports for Gauntlet
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/gauntlet-reports"
+          find . \( -path '*/build/test-results/*.xml' -o -path '*/build/reports/kover/*.xml' -o -path '*/build/reports/jacoco/*.xml' -o -path '*/target/test-reports/*.xml' -o -path '*/coverage-report/cobertura.xml' \) -not -path './.git/*' | while read -r f; do mkdir -p "$RUNNER_TEMP/gauntlet-reports/$(dirname "$f")"; cp "$f" "$RUNNER_TEMP/gauntlet-reports/$f"; done
+      - name: Upload the reports for Gauntlet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gauntlet-reports-bank-checks
+          path: ${{ runner.temp }}/gauntlet-reports
+          if-no-files-found: ignore
+          retention-days: 7
 
   bank-approvals:
     runs-on: ubuntu-latest
@@ -92,7 +118,20 @@ jobs:
             :events:publishToMavenLocal :issuer:publishToMavenLocal
       - name: Build and test
         working-directory: bank-approvals
-        run: nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican build --stacktrace
+        run: nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican build --stacktrace koverXmlReport
+      - name: Keep the test and coverage reports for Gauntlet
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/gauntlet-reports"
+          find . \( -path '*/build/test-results/*.xml' -o -path '*/build/reports/kover/*.xml' -o -path '*/build/reports/jacoco/*.xml' -o -path '*/target/test-reports/*.xml' -o -path '*/coverage-report/cobertura.xml' \) -not -path './.git/*' | while read -r f; do mkdir -p "$RUNNER_TEMP/gauntlet-reports/$(dirname "$f")"; cp "$f" "$RUNNER_TEMP/gauntlet-reports/$f"; done
+      - name: Upload the reports for Gauntlet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gauntlet-reports-bank-approvals
+          path: ${{ runner.temp }}/gauntlet-reports
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Test reports
         if: failure()
         uses: actions/upload-artifact@v4
@@ -125,4 +164,17 @@ jobs:
         run: nix develop .#ci -c ./gradlew -PlarkSource=../deps/lark -PpelicanSource=../deps/pelican :events:publishToMavenLocal
       - name: Build and test access-sync and the client
         working-directory: bank-access
-        run: nix develop -c ./gradlew build
+        run: nix develop -c ./gradlew build koverXmlReport
+      - name: Keep the test and coverage reports for Gauntlet
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/gauntlet-reports"
+          find . \( -path '*/build/test-results/*.xml' -o -path '*/build/reports/kover/*.xml' -o -path '*/build/reports/jacoco/*.xml' -o -path '*/target/test-reports/*.xml' -o -path '*/coverage-report/cobertura.xml' \) -not -path './.git/*' | while read -r f; do mkdir -p "$RUNNER_TEMP/gauntlet-reports/$(dirname "$f")"; cp "$f" "$RUNNER_TEMP/gauntlet-reports/$f"; done
+      - name: Upload the reports for Gauntlet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gauntlet-reports-bank-access
+          path: ${{ runner.temp }}/gauntlet-reports
+          if-no-files-found: ignore
+          retention-days: 7
