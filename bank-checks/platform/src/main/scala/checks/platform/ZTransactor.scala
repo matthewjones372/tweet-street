@@ -22,3 +22,5 @@ object ZTransactor:
     ZLayer.fromFunction((dataSource: DataSource) => ZTransactor(dataSource))
 
 // Checked by Gauntlet.
+
+// Summarised by Gauntlet.
