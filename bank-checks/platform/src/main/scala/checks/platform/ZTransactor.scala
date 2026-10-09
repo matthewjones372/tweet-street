@@ -6,7 +6,7 @@ import zio.*
 
 import javax.sql.DataSource
 
-// As starwars-api's: Magnum's own ZIO module is only a milestone, and this is all of it needed.
+// As starwars-api's: Magnum's own ZIO module is only a milestone, and this is all of it that is needed.
 final class ZTransactor private (private val underlying: Transactor):
   def connect[A](query: DbCon ?=> A): Task[A] =
     ZIO.attemptBlocking(magnum.connect(underlying)(query))
