@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GAUNTLET_URL: "https://github.com/matthewjones372/gauntlet/releases/download/v0.1.0-rc.21/gauntlet-linux-x64"
+  GAUNTLET_URL: "https://github.com/matthewjones372/gauntlet/releases/download/v0.1.0-rc.22/gauntlet-linux-x64"
 
 jobs:
   evidence:
@@ -40,7 +40,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Install Gauntlet 0.1.0-rc.21
+      - name: Install Gauntlet 0.1.0-rc.22
         run: |
           curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
           curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
@@ -138,7 +138,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
-      - name: Install Gauntlet 0.1.0-rc.21
+      - name: Install Gauntlet 0.1.0-rc.22
         run: |
           curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
           curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
@@ -183,10 +183,46 @@ jobs:
               jq --arg t "$team" --argjson m "$members" '. + {($t): $m}' teams.json > teams.next && mv teams.next teams.json
             done
           fi
+      - name: Find the pull request's stack
+        run: |
+          # Pull requests based on each other form a stack. Below: follow the bases down to the default branch.
+          # Above: the pull requests based on this one, and theirs, each with its comments and whether its
+          # commit contains this one (git decides that, not GitHub's bases).
+          comments_of() {
+            gh api graphql --paginate -F owner="${GITHUB_REPOSITORY%/*}" -F name="${GITHUB_REPOSITORY#*/}" -F number="$1" \
+              -f query='query($owner: String!, $name: String!, $number: Int!, $endCursor: String) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { comments(first: 100, after: $endCursor) { pageInfo { hasNextPage endCursor } nodes { body author { __typename login } editor { __typename login } } } } } }' \
+              --jq 'def who: if .__typename == "Bot" then .login + "[bot]" else .login end; .data.repository.pullRequest.comments.nodes[] | {user: ((.author // {login: "ghost"}) | who), body: .body} + (if .editor then {editor: (.editor | who)} else {} end)' | jq -s .
+          }
+          gh pr list --repo "$GITHUB_REPOSITORY" --state open --limit 200 --json number,headRefName,baseRefName,headRefOid > prs.json
+          below='[]'
+          ref=$(jq -r --argjson n "$PR" '.[] | select(.number == $n) | .baseRefName' prs.json)
+          for _ in $(seq 1 20); do
+            n=$(jq -r --arg r "$ref" '[.[] | select(.headRefName == $r)][0].number // empty' prs.json)
+            [ -z "$n" ] && break
+            below=$(jq -c --argjson n "$n" '[$n] + .' <<< "$below")
+            ref=$(jq -r --argjson n "$n" '.[] | select(.number == $n) | .baseRefName' prs.json)
+          done
+          above='[]'
+          queue=$(jq -r --argjson n "$PR" '.[] | select(.number == $n) | .headRefName' prs.json)
+          for _ in $(seq 1 20); do
+            [ -z "$queue" ] && break
+            next=""
+            for ref in $queue; do
+              for n in $(jq -r --arg r "$ref" '.[] | select(.baseRefName == $r) | .number' prs.json); do
+                sha=$(jq -r --argjson n "$n" '.[] | select(.number == $n) | .headRefOid' prs.json)
+                git fetch --no-tags origin "+refs/pull/$n/head:refs/remotes/pr/$n" > /dev/null 2>&1 || true
+                if git merge-base --is-ancestor "$HEAD" "$sha" 2> /dev/null; then contains=true; else contains=false; fi
+                above=$(jq -c --argjson n "$n" --arg h "$sha" --argjson c "$contains" --argjson m "$(comments_of "$n")" '. + [{number: $n, head: $h, contains: $c, comments: $m}]' <<< "$above")
+                next="$next $(jq -r --argjson n "$n" '.[] | select(.number == $n) | .headRefName' prs.json)"
+              done
+            done
+            queue="$next"
+          done
+          jq -n --argjson b "$below" --argjson a "$above" '{below: $b, above: $a}' > stack.json
       - name: Decide
         run: |
           "$RUNNER_TEMP/gauntlet" github-status --repo . --policy-ref "$BASE" --head "$HEAD" \
-            --evidence evidence/gauntlet-report.json --reviews reviews.json --teams teams.json --comments comments.json --out gauntlet-out --record
+            --evidence evidence/gauntlet-report.json --reviews reviews.json --teams teams.json --comments comments.json --stack stack.json --out gauntlet-out --record
       - name: Post the report and the check
         run: |
           body=$(printf '<!-- gauntlet-report -->\n%s' "$(cat gauntlet-out/gauntlet-report.md)")
@@ -201,6 +237,25 @@ jobs:
             -f conclusion="$(jq -r .conclusion gauntlet-out/status.json)" \
             -f "output[title]=$(jq -r .title gauntlet-out/status.json)" \
             -f "output[summary]=$(jq -r .summary gauntlet-out/status.json)" > /dev/null
+      - name: Approve the pull requests under it
+        run: |
+          # Approved at the top of a stack: the commit approved contains every pull request under it, and this
+          # report's owners include theirs, so each one only waiting for an approval is approved too.
+          [ "$(jq -r .conclusion gauntlet-out/status.json)" = success ] || exit 0
+          by=$(jq -r '.approvedBy | join(", ")' gauntlet-out/status.json)
+          for n in $(jq -r '.below[]' stack.json); do
+            sha=$(jq -r --argjson n "$n" '.[] | select(.number == $n) | .headRefOid' prs.json)
+            git merge-base --is-ancestor "$sha" "$HEAD" 2> /dev/null || continue
+            state=$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha/check-runs?check_name=gauntlet" --jq '.check_runs[0].conclusion // empty')
+            [ "$state" = action_required ] || continue
+            gh api -X POST "repos/$GITHUB_REPOSITORY/check-runs" -f name=gauntlet -f head_sha="$sha" -f status=completed -f conclusion=success \
+              -f "output[title]=Approved with its stack by $by (#$PR)" \
+              -f "output[summary]=Approved with its stack: the box was ticked on #$PR by $by, and #$PR's commit contains this one." > /dev/null
+            comment=$(gh api "repos/$GITHUB_REPOSITORY/issues/$n/comments" --paginate --jq '.[] | select(.body | startswith("<!-- gauntlet-report -->")) | .id' | head -n 1)
+            [ -z "$comment" ] && continue
+            body=$(gh api "repos/$GITHUB_REPOSITORY/issues/comments/$comment" --jq .body | awk -v note="**Approved with its stack** by $by: the box was ticked on #$PR, whose commit contains this one." 'NR == 2 { print ""; print note } { print }')
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$comment" -f body="$body" > /dev/null
+          done
       - name: Push Gauntlet's shadow history
         if: github.event_name == 'pull_request_target'
         run: git push origin refs/notes/gauntlet || true
