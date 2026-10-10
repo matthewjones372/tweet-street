@@ -4,7 +4,14 @@ import arrow.core.Either
 
 /** The bank as the HTTP layer sees it. The app answers it with sharded actors; a test with a map. */
 interface Bank {
-    fun open(id: AccountId, owner: String, initial: Money, reference: String): Either<AccountError, Balance>
+    /** [dailyLimit] null opens it with the default (bank spec 0027). */
+    fun open(
+        id: AccountId,
+        owner: String,
+        initial: Money,
+        reference: String,
+        dailyLimit: Money? = null,
+    ): Either<AccountError, Balance>
     fun deposit(id: AccountId, amount: Money, reference: String): Either<AccountError, Balance>
     fun withdraw(id: AccountId, amount: Money, reference: String): Either<AccountError, Balance>
     fun balance(id: AccountId): Either<AccountError, Balance>

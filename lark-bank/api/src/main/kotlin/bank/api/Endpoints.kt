@@ -34,8 +34,11 @@ val before = queryParam<Long>("before", description = "Only lines before this se
  */
 data class Amount(val value: String, val currency: String)
 
-/** An account in [currency], which it keeps, with [initial] paid in as it opens. Its owner is whoever opens it. */
-data class OpenAccount(val currency: String, val initial: String = "0")
+/**
+ * An account in [currency], which it keeps, with [initial] paid in as it opens. Its owner is whoever opens it. It pays
+ * out at most [dailyLimit] a UTC day, in its currency; 10,000 when none is given (bank spec 0027).
+ */
+data class OpenAccount(val currency: String, val initial: String = "0", val dailyLimit: String? = null)
 
 /** An amount, and the caller's reference for it: the same reference twice moves the money once. */
 data class Movement(val amount: Amount, val reference: String)
@@ -165,7 +168,20 @@ data class InsufficientFunds(val account: String, val balance: Amount, val reque
  */
 data class InvalidAmount(val message: String, val accountCurrency: String? = null)
 
-val insufficientFunds = errorJson<InsufficientFunds>(409, "The account cannot cover that amount")
+/** Paying out the amount would take the account past its daily limit; [remaining] is what is left of it today. */
+data class DailyLimitExceeded(
+    val account: String,
+    val limit: Amount,
+    val remaining: Amount,
+    val requested: Amount,
+    val message: String,
+)
+
+// Both are a withdrawal's 409, so each is tagged: the body's reason says which a client has.
+val insufficientFunds =
+    errorJson<InsufficientFunds>(409, "The account cannot cover that amount").tagged("insufficient_funds")
+val dailyLimitExceeded =
+    errorJson<DailyLimitExceeded>(409, "The account would pass its daily limit").tagged("daily_limit_exceeded")
 val invalidAmount = errorJson<InvalidAmount>(422, "Only a positive amount, in its currency's places and the account's currency, moves")
 val unavailable = errorJson<Unavailable>(503, "The bank could not answer in time; try again with the same reference")
 
@@ -209,7 +225,8 @@ val withdraw = endpoint(accountId, jsonBody<Movement>()) {
     post("accounts" / accountId / "withdrawals")
     authenticatedBy(caller)
     summary = "Take money out"
-    json<AccountView>().orFail(accountMissing, insufficientFunds, invalidAmount, forbidden, unavailable)
+    json<AccountView>()
+        .orFail(accountMissing, insufficientFunds, dailyLimitExceeded, invalidAmount, forbidden, unavailable)
 }
 
 val statement = endpoint(accountId, limit, before) {

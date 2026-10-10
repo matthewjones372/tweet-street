@@ -68,6 +68,7 @@ private val accountReplies = Kotlinx.oneOf<Any> {
     message<WireAccountError.InvalidAmount>(5)
     message<WireAccountError.Unavailable>(6)
     message<WireAccountError.CurrencyMismatch>(7)
+    message<WireAccountError.DailyLimitExceeded>(8)
 }
 
 private val bulkCredits = Kotlinx.oneOf<WireBulkCredit> {

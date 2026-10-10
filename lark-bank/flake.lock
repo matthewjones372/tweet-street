@@ -33,10 +33,10 @@
     "pelican": {
       "flake": false,
       "locked": {
-        "lastModified": 1790960514,
-        "narHash": "sha256-AxEVzEKz4gDB6k0Tpqu0UR3QWTBqnUcvrL+PJrsfeBA=",
+        "lastModified": 1791296611,
+        "narHash": "sha256-CPjehCnS2YyVR6YHKcfU+ExP0eWLifis7LeY3Z81pOY=",
         "ref": "refs/heads/main",
-        "rev": "332532e16a9ae76ec7d5d6386ba60f3abb167d31",
+        "rev": "a2024349bc5504ab4466a1a7bc0c1f0382c2a14a",
         "shallow": true,
         "type": "git",
         "url": "https://github.com/matthewjones372/pelican"

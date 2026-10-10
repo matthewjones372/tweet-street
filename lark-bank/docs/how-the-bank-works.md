@@ -66,6 +66,11 @@ An account is a persistent, sharded entity. Only it changes its balance. It deci
 domain and writes the events before it answers. The commands waiting in its mailbox are decided together and
 written in one append, up to 64 (lark spec 0086), so a busy account is not held back by a commit per payment.
 
+An account pays out at most its daily limit in a UTC day, withdrawals and transfers' debits together: 10,000 in its
+currency, or the limit it was opened with (spec 0027). A refund on the same day gives its debit's share back. A
+payout past the limit is refused with the limit and what is left today: a 409 tagged `daily_limit_exceeded` for a
+withdrawal, and a transfer `Rejected` with that reason.
+
 ```mermaid
 sequenceDiagram
     autonumber

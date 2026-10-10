@@ -8,6 +8,8 @@ message Opened {
   required Money initial = 2;
   required string reference = 3;
   required int64 atMillis = 4;
+  // WARNING: a default value decoded when value is missing
+  optional Money dailyLimit = 5;
 }
 
 // serial name 'bank.protocol.wire.AccountEvent.Deposited'
@@ -59,6 +61,14 @@ message OpenAccount {
   required Money balance = 2;
   repeated string recent = 3;
   repeated string legs = 4;
+  // WARNING: a default value decoded when value is missing
+  optional Money dailyLimit = 5;
+  // WARNING: a default value decoded when value is missing
+  optional int64 paidOutOn = 6;
+  // WARNING: a default value decoded when value is missing
+  optional Money paidOut = 7;
+  // WARNING: a default value decoded when value is missing
+  repeated string debitedOn = 8;
 }
 
 // serial name 'bank.protocol.wire.AccountCommand.Open'
@@ -66,6 +76,8 @@ message Open {
   required string owner = 1;
   required Money initial = 2;
   required string reference = 3;
+  // WARNING: a default value decoded when value is missing
+  optional Money dailyLimit = 4;
 }
 
 // serial name 'bank.protocol.wire.AccountCommand.Deposit'
@@ -144,6 +156,14 @@ message CurrencyMismatch {
   required string id = 1;
   required string account = 2;
   required string given = 3;
+}
+
+// serial name 'bank.protocol.wire.AccountError.DailyLimitExceeded'
+message DailyLimitExceeded {
+  required string id = 1;
+  required Money limit = 2;
+  required Money remaining = 3;
+  required Money requested = 4;
 }
 
 // serial name 'bank.protocol.wire.BulkCredit'
@@ -324,6 +344,7 @@ message AccountReply {
     InvalidAmount invalid_amount = 5;
     AccountUnavailable account_unavailable = 6;
     CurrencyMismatch currency_mismatch = 7;
+    DailyLimitExceeded daily_limit_exceeded = 8;
   }
 }
 

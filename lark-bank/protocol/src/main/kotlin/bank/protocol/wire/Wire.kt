@@ -20,7 +20,8 @@ data class Currency(val code: String, val exponent: Int)
 
 sealed interface AccountCommand {
     @Serializable
-    data class Open(val owner: String, val initial: Money, val reference: String) : AccountCommand
+    data class Open(val owner: String, val initial: Money, val reference: String, val dailyLimit: Money? = null) :
+        AccountCommand
 
     @Serializable
     data class Deposit(val amount: Money, val reference: String) : AccountCommand
@@ -48,7 +49,13 @@ data object GetBalance
 
 sealed interface AccountEvent {
     @Serializable
-    data class Opened(val owner: String, val initial: Money, val reference: String, val atMillis: Long) : AccountEvent
+    data class Opened(
+        val owner: String,
+        val initial: Money,
+        val reference: String,
+        val atMillis: Long,
+        val dailyLimit: Money? = null,
+    ) : AccountEvent
 
     @Serializable
     data class Deposited(val amount: Money, val reference: String, val atMillis: Long) : AccountEvent
@@ -76,7 +83,16 @@ sealed interface Account {
 
     @Serializable
     @SerialName("OpenAccount")
-    data class Open(val owner: String, val balance: Money, val recent: List<String>, val legs: Set<String>) : Account
+    data class Open(
+        val owner: String,
+        val balance: Money,
+        val recent: List<String>,
+        val legs: Set<String>,
+        val dailyLimit: Money? = null,
+        val paidOutOn: Long = 0,
+        val paidOut: Money? = null,
+        val debitedOn: Set<String> = emptySet(),
+    ) : Account
 }
 
 @Serializable
@@ -97,6 +113,10 @@ sealed interface AccountError {
 
     @Serializable
     data class CurrencyMismatch(val id: String, val account: String, val given: String) : AccountError
+
+    @Serializable
+    data class DailyLimitExceeded(val id: String, val limit: Money, val remaining: Money, val requested: Money) :
+        AccountError
 
     @Serializable
     @SerialName("AccountUnavailable")

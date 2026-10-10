@@ -37,8 +37,8 @@ class ShardedBank(
     private val transferWait: Duration,
 ) : Bank {
 
-    override fun open(id: AccountId, owner: String, initial: Money, reference: String) =
-        command(id, AccountCommand.Open(owner, initial, reference))
+    override fun open(id: AccountId, owner: String, initial: Money, reference: String, dailyLimit: Money?) =
+        command(id, AccountCommand.Open(owner, initial, reference, dailyLimit))
 
     override fun deposit(id: AccountId, amount: Money, reference: String) =
         command(id, AccountCommand.Deposit(amount, reference))

@@ -8,8 +8,16 @@ import arrow.core.right
 sealed interface AccountCommand {
     val reference: String
 
-    /** Opens the account in [initial]'s currency, which it keeps: every amount after must be in it too. */
-    data class Open(val owner: String, val initial: Money, override val reference: String) : AccountCommand
+    /**
+     * Opens the account in [initial]'s currency, which it keeps: every amount after must be in it too. It pays out at
+     * most [dailyLimit] a UTC day, 10,000 in that currency when none is given (bank spec 0027).
+     */
+    data class Open(
+        val owner: String,
+        val initial: Money,
+        override val reference: String,
+        val dailyLimit: Money? = null,
+    ) : AccountCommand
     data class Deposit(val amount: Money, override val reference: String) : AccountCommand
     data class Withdraw(val amount: Money, override val reference: String) : AccountCommand
 
@@ -38,8 +46,14 @@ sealed interface AccountEvent {
     val reference: String
     val atMillis: Long
 
-    data class Opened(val owner: String, val initial: Money, override val reference: String, override val atMillis: Long) :
-        AccountEvent
+    /** [dailyLimit] is the limit the account opened with; null only in an `Opened` written before limits. */
+    data class Opened(
+        val owner: String,
+        val initial: Money,
+        override val reference: String,
+        override val atMillis: Long,
+        val dailyLimit: Money? = null,
+    ) : AccountEvent
 
     data class Deposited(val amount: Money, override val reference: String, override val atMillis: Long) : AccountEvent
     data class Withdrawn(val amount: Money, override val reference: String, override val atMillis: Long) : AccountEvent
@@ -85,6 +99,13 @@ sealed interface AccountError {
     data class CurrencyMismatch(val id: String, val account: String, val given: String) : AccountError {
         override val message: String get() = "Account $id is in $account, not $given"
     }
+
+    /** Paying [requested] out would take the account past what it may pay out in a UTC day (bank spec 0027). */
+    data class DailyLimitExceeded(val id: String, val limit: Money, val remaining: Money, val requested: Money) :
+        AccountError {
+        override val message: String
+            get() = "Account $id may pay out $limit a day and has $remaining of that left today, not $requested"
+    }
 }
 
 /** The bank could not answer in time: a node moving, a journal slow. Worth trying again with the same reference. */
@@ -95,12 +116,23 @@ data class Unavailable(override val message: String) : AccountError, TransferErr
  * command is recognised without the state growing with every transaction the account has seen. [legs] holds the
  * references of transfer legs applied whose transfer has not yet settled: a saga retries a leg on a timer, long after
  * a busy account has moved past [RECENT] other commands, so those are kept until the saga closes them (spec 0013).
+ * [paidOut] is what the account paid out on [paidOutOn], a UTC day since the epoch, and [debitedOn] the transfers
+ * whose debits are in it, so a refund knows whether to give its debit back (spec 0027). [dailyLimit], [paidOut] and
+ * [debitedOn] are null or empty in a snapshot taken before limits.
  */
 sealed interface Account {
     data object Unopened : Account
 
-    data class Open(val owner: String, val balance: Money, val recent: List<String>, val legs: Set<String> = emptySet()) :
-        Account
+    data class Open(
+        val owner: String,
+        val balance: Money,
+        val recent: List<String>,
+        val legs: Set<String> = emptySet(),
+        val dailyLimit: Money? = null,
+        val paidOutOn: Long = 0,
+        val paidOut: Money? = null,
+        val debitedOn: Set<String> = emptySet(),
+    ) : Account
 
     companion object {
         const val RECENT = 256
@@ -117,9 +149,7 @@ data class Balance(val id: String, val owner: String, val balance: Money)
 fun Account.decide(id: AccountId, command: AccountCommand, now: Long): Either<AccountError, List<AccountEvent>> =
     when (this) {
         Account.Unopened -> when (command) {
-            is AccountCommand.Open ->
-                if (command.initial.isNegative) AccountError.InvalidAmount(command.initial).left()
-                else listOf(AccountEvent.Opened(command.owner, command.initial, command.reference, now)).right()
+            is AccountCommand.Open -> opening(id, command, now)
             is AccountCommand.Deposit, is AccountCommand.Withdraw, is AccountCommand.Debit, is AccountCommand.Credit,
             is AccountCommand.Refund, is AccountCommand.Close,
             -> AccountError.NoSuchAccount(id.value).left()
@@ -132,8 +162,9 @@ fun Account.decide(id: AccountId, command: AccountCommand, now: Long): Either<Ac
             is AccountCommand.Credit -> once(command) { moving(id, command.amount) { AccountEvent.Credited(command.transfer, it, now) } }
             is AccountCommand.Refund -> once(command) { moving(id, command.amount) { AccountEvent.Refunded(command.transfer, it, now) } }
             is AccountCommand.Withdraw ->
-                once(command) { taking(id, command.amount) { AccountEvent.Withdrawn(it, command.reference, now) } }
-            is AccountCommand.Debit -> once(command) { taking(id, command.amount) { AccountEvent.Debited(command.transfer, it, now) } }
+                once(command) { taking(id, command.amount, now) { AccountEvent.Withdrawn(it, command.reference, now) } }
+            is AccountCommand.Debit ->
+                once(command) { taking(id, command.amount, now) { AccountEvent.Debited(command.transfer, it, now) } }
             is AccountCommand.Close ->
                 if (legs.none { it.endsWith(":${command.transfer}") }) emptyList<AccountEvent>().right()
                 else listOf(AccountEvent.LegsClosed(command.transfer, now)).right()
@@ -160,22 +191,27 @@ private fun Account.Open.moving(
 private fun Account.Open.taking(
     id: AccountId,
     amount: Money,
+    now: Long,
     event: (Money) -> AccountEvent,
 ): Either<AccountError, List<AccountEvent>> = when {
     amount.currency != balance.currency -> AccountError.CurrencyMismatch(id.value, balance.currency.code, amount.currency.code).left()
     !amount.isPositive -> AccountError.InvalidAmount(amount).left()
     amount > balance -> AccountError.InsufficientFunds(id.value, balance, amount).left()
+    amount > leftOn(now) -> AccountError.DailyLimitExceeded(id.value, limit, leftOn(now), amount).left()
     else -> listOf(event(amount)).right()
 }
 
 /** The state after an event. Recovery is this, folded over the journal from the newest snapshot. */
 fun Account.evolve(event: AccountEvent): Account = when (event) {
-    is AccountEvent.Opened -> Account.Open(event.owner, event.initial, listOf(event.reference))
+    is AccountEvent.Opened ->
+        Account.Open(event.owner, event.initial, listOf(event.reference), dailyLimit = event.dailyLimit)
     is AccountEvent.Deposited -> open().moved(event.amount, event.reference)
     is AccountEvent.Credited -> open().moved(event.amount, event.reference).leg(event.reference)
     is AccountEvent.Refunded -> open().moved(event.amount, event.reference).leg(event.reference)
-    is AccountEvent.Withdrawn -> open().moved(-event.amount, event.reference)
+        .givenBack(event.transfer, event.amount, event.atMillis)
+    is AccountEvent.Withdrawn -> open().moved(-event.amount, event.reference).paid(event.amount, event.atMillis)
     is AccountEvent.Debited -> open().moved(-event.amount, event.reference).leg(event.reference)
+        .paid(event.amount, event.atMillis, event.transfer)
     is AccountEvent.LegsClosed -> open().let { it.copy(legs = it.legs.filterNot { leg -> leg.endsWith(":${event.transfer}") }.toSet()) }
 }
 

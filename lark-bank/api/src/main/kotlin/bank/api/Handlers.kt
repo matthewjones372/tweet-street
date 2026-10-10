@@ -8,6 +8,7 @@ import org.apache.pekko.NotUsed
 import org.apache.pekko.util.ByteString
 import arrow.core.Either
 import arrow.core.flatMap
+import arrow.core.raise.either
 import bank.domain.AccountError
 import bank.domain.AccountId
 import bank.domain.Balance
@@ -98,17 +99,10 @@ fun bankApi(
         openAccount handledOrFail { (id, body) ->
             val who = this[caller]
             if (!rules.canOpen(who)) return@handledOrFail forbidden(Forbidden("An account is opened by its owner, not by someone acting as them"))
-            currencies.amount(Amount(body.initial, body.currency)).fold({ invalidAmount(it) }) { initial ->
-                bank.open(AccountId(id), who.actingAs, initial, reference = "open:$id").onRight { owners.remember(it) }
-                    .map(::view).toOutcome { refusal ->
-                    when (refusal) {
-                        is AccountError.AlreadyOpen -> accountExists(refusal)
-                        is AccountError.InvalidAmount -> invalidAmount(InvalidAmount(refusal.message))
-                        is Unavailable -> unavailable(refusal)
-                        is AccountError.NoSuchAccount, is AccountError.InsufficientFunds, is AccountError.CurrencyMismatch ->
-                            error("opening refused as $refusal")
-                    }
-                }
+            currencies.opening(body).fold({ invalidAmount(it) }) { (initial, dailyLimit) ->
+                bank.open(AccountId(id), who.actingAs, initial, reference = "open:$id", dailyLimit)
+                    .onRight { owners.remember(it) }
+                    .map(::view).toOutcome(::openRefused)
             }
         },
         getAccount handledOrFail { id ->
@@ -117,7 +111,7 @@ fun bankApi(
                     is AccountError.NoSuchAccount -> accountMissing(refusal)
                     is Unavailable -> unavailable(refusal)
                     is AccountError.AlreadyOpen, is AccountError.InsufficientFunds, is AccountError.InvalidAmount,
-                    is AccountError.CurrencyMismatch,
+                    is AccountError.CurrencyMismatch, is AccountError.DailyLimitExceeded,
                     -> error("a balance refused as $refusal")
                 }
             }
@@ -133,7 +127,9 @@ fun bankApi(
                             is AccountError.InvalidAmount -> invalidAmount(InvalidAmount(refusal.message))
                             is AccountError.CurrencyMismatch -> invalidAmount(InvalidAmount(refusal.message, refusal.account))
                             is Unavailable -> unavailable(refusal)
-                            is AccountError.AlreadyOpen, is AccountError.InsufficientFunds -> error("a deposit refused as $refusal")
+                            is AccountError.AlreadyOpen, is AccountError.InsufficientFunds,
+                            is AccountError.DailyLimitExceeded,
+                            -> error("a deposit refused as $refusal")
                         }
                     }
             }
@@ -147,6 +143,7 @@ fun bankApi(
                         when (refusal) {
                             is AccountError.NoSuchAccount -> accountMissing(refusal)
                             is AccountError.InsufficientFunds -> insufficientFunds(short(refusal))
+                            is AccountError.DailyLimitExceeded -> dailyLimitExceeded(capped(refusal))
                             is AccountError.InvalidAmount -> invalidAmount(InvalidAmount(refusal.message))
                             is AccountError.CurrencyMismatch -> invalidAmount(InvalidAmount(refusal.message, refusal.account))
                             is Unavailable -> unavailable(refusal)
@@ -346,3 +343,22 @@ private fun view(transfer: bank.domain.TransferView) =
 
 private fun short(refused: AccountError.InsufficientFunds) =
     InsufficientFunds(refused.id, refused.balance.toAmount(), refused.requested.toAmount(), refused.message)
+
+private fun capped(refused: AccountError.DailyLimitExceeded) = DailyLimitExceeded(
+    refused.id, refused.limit.toAmount(), refused.remaining.toAmount(), refused.requested.toAmount(), refused.message,
+)
+
+/** An opening's initial amount and daily limit, both read in the account's currency (bank spec 0027). */
+private fun Currencies.opening(body: OpenAccount): Either<InvalidAmount, Pair<Money, Money?>> = either {
+    amount(Amount(body.initial, body.currency)).bind() to
+        body.dailyLimit?.let { amount(Amount(it, body.currency)).bind() }
+}
+
+private fun openRefused(refusal: AccountError) = when (refusal) {
+    is AccountError.AlreadyOpen -> accountExists(refusal)
+    is AccountError.InvalidAmount -> invalidAmount(InvalidAmount(refusal.message))
+    is Unavailable -> unavailable(refusal)
+    is AccountError.NoSuchAccount, is AccountError.InsufficientFunds, is AccountError.CurrencyMismatch,
+    is AccountError.DailyLimitExceeded,
+    -> error("opening refused as $refusal")
+}

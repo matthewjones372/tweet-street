@@ -41,3 +41,4 @@ home overlay, by name.
 | [0023](0023-every-log-line-in-one-place.md) | every service's log as JSON, kept in Loki on Garage and read in Grafana; settled; built, every entry; `log-store`, `log-ship` and `log-views` not yet run on a cluster |
 | [0024](0024-a-request-followed-through-the-estate.md) | one trace per request across every node, actor, call and Kafka hop, in Tempo on Garage, linked to the logs; on Lark 0122 and 0123 and Pelican 0064 (built); settled; built, every entry |
 | [0026](0026-the-estate-on-one-page.md) | the bank adopting Estate, a generic estate dashboard in its own repository: its catalog, its deploy, Alertmanager, and debug through logging ConfigMaps; built; debug for all three services built, its DEBUG lines not yet seen on a cluster |
+| [0027](0027-a-daily-withdrawal-limit.md) | a daily limit on what an account pays out, withdrawals and debits together, per UTC day; built |
