@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "gauntlet hook stop",
+            "command": "if command -v gauntlet >/dev/null 2>&1; then exec gauntlet hook stop; fi; echo \"Gauntlet isn't installed on this machine, so this work wasn't checked. Install it with: curl -fsSL https://raw.githubusercontent.com/matthewjones372/gauntlet/main/install.sh | sh\" >&2; exit 1",
             "statusMessage": "Gauntlet is checking the change (build, tests, coverage)…",
             "timeout": 1800
           }
@@ -15,11 +15,11 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "gauntlet hook pre-tool-use"
+            "command": "command -v gauntlet >/dev/null 2>&1 || exit 0; exec gauntlet hook pre-tool-use"
           }
         ]
       }

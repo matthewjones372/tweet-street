@@ -7,6 +7,7 @@ This repository's pull requests are judged by Gauntlet (`.gauntlet/policy.gx`).
 - Never edit protected paths to make a check pass: `.gauntlet/`, test setup and build configuration. In CI they are put back to the base version, so such edits don't help and they need a human.
 - When a requirement changes, change the tests that state it, and say in your summary which tests and why. An edited protected test runs as you wrote it and puts the change up for review, never auto-approved. Never change a test only to make it pass.
 - Never skip, delete or weaken tests, add suppressions, or special-case tests in main code. Gauntlet detects these and blocks the change.
+- Never push to the default branch. Work on a branch, push it and open a pull request (ask the person first), so the change reaches the default branch only once its checks pass. Gauntlet's hook refuses a push to it.
 - If the task can't be done without changing protected files (test setup, build configuration) or policy, stop and call the `report_blocked` MCP tool (or run `gauntlet report blocked --reason "..."`) with the reason. That is the right outcome, not a failure.
 - When a check blocks you on something you aren't allowed to change (Gauntlet's, or the project's own Stop hook or gate), never just wait. Work out the cause of each failure and give the person the exact commands that fix it, one per code block, each with a one-line reason. If the same block comes back twice, stop and say so instead of trying again.
 <!-- END gauntlet -->
