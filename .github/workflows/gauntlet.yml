@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GAUNTLET_URL: "https://github.com/matthewjones372/gauntlet/releases/download/v0.1.0-rc.20/gauntlet-linux-x64"
+  GAUNTLET_URL: "https://github.com/matthewjones372/gauntlet/releases/download/v0.1.0-rc.21/gauntlet-linux-x64"
 
 jobs:
   evidence:
@@ -40,7 +40,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Install Gauntlet 0.1.0-rc.20
+      - name: Install Gauntlet 0.1.0-rc.21
         run: |
           curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
           curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
@@ -138,7 +138,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
-      - name: Install Gauntlet 0.1.0-rc.20
+      - name: Install Gauntlet 0.1.0-rc.21
         run: |
           curl -fsSL "$GAUNTLET_URL" -o "$RUNNER_TEMP/gauntlet"
           curl -fsSL "$(dirname "$GAUNTLET_URL")/checksums.txt" | grep " gauntlet-linux-x64$" | sed "s#gauntlet-linux-x64#$RUNNER_TEMP/gauntlet#" | sha256sum -c -
@@ -166,7 +166,10 @@ jobs:
           TICKED_BODY: ${{ github.event.comment.body }}
         run: |
           gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" --jq '.[] | {user: .user.login, state: .state, commitId: .commit_id}' | jq -s . > reviews.json
-          gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --jq '.[] | {user: .user.login, body: .body}' | jq -s . > comments.json
+          # Each comment with its last editor: anyone with write access can edit any comment, so its text counts as the editor's.
+          gh api graphql --paginate -F owner="${GITHUB_REPOSITORY%/*}" -F name="${GITHUB_REPOSITORY#*/}" -F number="$PR" \
+            -f query='query($owner: String!, $name: String!, $number: Int!, $endCursor: String) { repository(owner: $owner, name: $name) { pullRequest(number: $number) { comments(first: 100, after: $endCursor) { pageInfo { hasNextPage endCursor } nodes { body author { __typename login } editor { __typename login } } } } } }' \
+            --jq 'def who: if .__typename == "Bot" then .login + "[bot]" else .login end; .data.repository.pullRequest.comments.nodes[] | {user: ((.author // {login: "ghost"}) | who), body: .body} + (if .editor then {editor: (.editor | who)} else {} end)' | jq -s . > comments.json
           # A ticked box in Gauntlet's report counts as from whoever ticked it; only an owner's counts.
           if [ "${{ github.event_name }}" = "issue_comment" ] && [ "${{ github.event.action }}" = "edited" ]; then
             jq --arg u "$TICKED_BY" --arg b "$TICKED_BODY" '. + [{user: $u, body: $b}]' comments.json > comments.next && mv comments.next comments.json
